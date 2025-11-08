@@ -1,0 +1,10 @@
+{
+  "server_url": "http://localhost:8080",
+  "auth_realm": "master",
+  "realm": "master",
+  "client_id": "admin-cli",
+  "client_secret": "",
+  "username": "admin",
+  "password": "admin",
+  "grant_type": "password"
+}
