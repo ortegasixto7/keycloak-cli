@@ -101,6 +101,44 @@ Orden de prioridad cuando ejecutas `roles create` (de mayor a menor):
 2. Flag global `--realm` del comando raíz.
 3. Valor `realm` en `config.json`.
 
+#### Editar roles: `roles update`
+- **Actualizar descripción de varios roles en un realm**
+  ```bash
+  kc roles update --realm myrealm \
+    --name admin --name operator \
+    --description "Nueva descripción"
+  ```
+
+- **Renombrar roles por orden en múltiples realms**
+  ```bash
+  kc roles update \
+    --realm myrealm --realm sandbox \
+    --name viewer --new-name read_only \
+    --name auditor --new-name audit_read
+  ```
+
+Flags de `roles update`:
+- `--name <ROL>` Repetible. Requerido.
+- `--description <TEXTO>` Repetible. Opcional; 0, 1 o N (se empareja por orden con `--name`).
+- `--new-name <NUEVO>` Repetible. Opcional; 0, 1 o N (se empareja por orden con `--name`).
+- `--realm <REALM>` Realm destino. Si no se indica, usa el por defecto.
+- `--all-realms` Aplica en todos los realms.
+- `--ignore-missing` Si un rol no existe en el realm, omite en lugar de fallar.
+
+#### Eliminar roles: `roles delete`
+- **Eliminar roles en todos los realms (saltando los inexistentes)**
+  ```bash
+  kc roles delete --all-realms \
+    --name temp_role --name deprecated_role \
+    --ignore-missing
+  ```
+
+Flags de `roles delete`:
+- `--name <ROL>` Repetible. Requerido.
+- `--realm <REALM>` Realm destino. Si no se indica, usa el por defecto.
+- `--all-realms` Elimina en todos los realms.
+- `--ignore-missing` Si un rol no existe en el realm, omite en lugar de fallar.
+
 ### Users
 - **Crear múltiples usuarios en un realm con una sola contraseña**
   ```bash
