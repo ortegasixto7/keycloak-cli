@@ -185,3 +185,47 @@ Flags de `roles delete`:
 - `--realm <REALM>` Repetible. Realms destino. Si se omite y no usas `--all-realms`, se usa el realm por defecto (flag global o `config.json`).
 - `--all-realms` Crea en todos los realms.
 - `--realm-role <ROL>` Repetible. Asigna roles de realm existentes al usuario creado.
+
+#### Editar usuarios: `users update`
+- **Actualizar contraseña y habilitar múltiples usuarios**
+  ```bash
+  kc users update \
+    --realm myrealm \
+    --username jdoe --username mjane \
+    --password "Nuev4!" \
+    --enabled=true
+  ```
+
+- **Actualizar campos por usuario (ordenados)**
+  ```bash
+  kc users update \
+    --realm myrealm \
+    --username a --email a@acme.com --first-name Ana --last-name A \
+    --username b --email b@acme.com --first-name Beto --last-name B
+  ```
+
+Flags de `users update`:
+- `--username <USER>` Repetible. Requerido.
+- `--email <EMAIL>` Repetible. 0, 1 o N (empareja por orden). Si se especifica, `emailVerified=true`.
+- `--first-name <NOMBRE>` Repetible. 0, 1 o N.
+- `--last-name <APELLIDO>` Repetible. 0, 1 o N.
+- `--password <PWD>` Repetible. 0, 1 o N.
+- `--enabled` Booleano. Si se incluye el flag, aplica el valor a los usuarios objetivo.
+- `--realm <REALM>` Repetible. Realms destino.
+- `--all-realms` Aplica en todos los realms.
+- `--ignore-missing` Omite usuarios inexistentes en lugar de fallar.
+
+#### Eliminar usuarios: `users delete`
+- **Eliminar usuarios en múltiples realms, ignorando inexistentes**
+  ```bash
+  kc users delete \
+    --realm myrealm --realm sandbox \
+    --username olduser1 --username olduser2 \
+    --ignore-missing
+  ```
+
+Flags de `users delete`:
+- `--username <USER>` Repetible. Requerido.
+- `--realm <REALM>` Repetible. Realms destino.
+- `--all-realms` Elimina en todos los realms.
+- `--ignore-missing` Omite usuarios inexistentes en lugar de fallar.

@@ -24,6 +24,14 @@ var (
 	usersRealms    []string
 	usersAllRealms bool
 	realmRoleNames []string
+	// update-specific
+	updEmails     []string
+	updFirstNames []string
+	updLastNames  []string
+	updPasswords  []string
+	updEnabled    bool
+	updIgnoreMiss bool
+	delIgnoreMiss bool
 )
 
 var usersCmd = &cobra.Command{
@@ -189,6 +197,152 @@ var usersCreateCmd = &cobra.Command{
 	},
 }
 
+var usersUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update user(s) in one or multiple realms",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(usernames) == 0 {
+			return errors.New("missing --username: provide at least one --username")
+		}
+		// Determine if enabled flag was provided
+		enabledChanged := cmd.Flags().Changed("enabled")
+
+		// Must have at least one field to update
+		if len(updEmails) == 0 && len(updFirstNames) == 0 && len(updLastNames) == 0 && len(updPasswords) == 0 && !enabledChanged {
+			return errors.New("nothing to update: provide at least one of --email/--first-name/--last-name/--password/--enabled")
+		}
+		// Validate 0/1/N for provided slices
+		validate := func(name string, n int) error {
+			if !(n == 0 || n == 1 || n == len(usernames)) {
+				return fmt.Errorf("invalid %s: when using multiple --username, pass none, one (applies to all), or one per --username (in order)", name)
+			}
+			return nil
+		}
+		if err := validate("--email", len(updEmails)); err != nil { return err }
+		if err := validate("--first-name", len(updFirstNames)); err != nil { return err }
+		if err := validate("--last-name", len(updLastNames)); err != nil { return err }
+		if err := validate("--password", len(updPasswords)); err != nil { return err }
+
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+		client, token, err := keycloak.Login(ctx)
+		if err != nil { return err }
+
+		// Resolve target realms
+		var targetRealms []string
+		if usersAllRealms {
+			realms, err := client.GetRealms(ctx, token)
+			if err != nil { return err }
+			for _, r := range realms { if r.Realm != nil { targetRealms = append(targetRealms, *r.Realm) } }
+		} else if len(usersRealms) > 0 {
+			targetRealms = append(targetRealms, usersRealms...)
+		} else {
+			r := defaultRealm
+			if r == "" { r = config.Global.Realm }
+			if r == "" { return errors.New("target realm not specified. Use --realm or set realm in config.json") }
+			targetRealms = []string{r}
+		}
+
+		updated := 0
+		skipped := 0
+		for _, realm := range targetRealms {
+			for i, un := range usernames {
+				params := gocloak.GetUsersParams{Username: &un}
+				existing, err := client.GetUsers(ctx, token, realm, params)
+				if err != nil { return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err) }
+				if len(existing) == 0 {
+					if updIgnoreMiss {
+						fmt.Fprintf(cmd.OutOrStdout(), "User %q not found in realm %q. Skipped.\n", un, realm)
+						skipped++
+						continue
+					}
+					return fmt.Errorf("user %q not found in realm %s", un, realm)
+				}
+				userID := *existing[0].ID
+
+				var em, fn, ln, pw string
+				if len(updEmails) == 1 { em = updEmails[0] } else if len(updEmails) == len(usernames) { em = updEmails[i] }
+				if len(updFirstNames) == 1 { fn = updFirstNames[0] } else if len(updFirstNames) == len(usernames) { fn = updFirstNames[i] }
+				if len(updLastNames) == 1 { ln = updLastNames[0] } else if len(updLastNames) == len(usernames) { ln = updLastNames[i] }
+				if len(updPasswords) == 1 { pw = updPasswords[0] } else if len(updPasswords) == len(usernames) { pw = updPasswords[i] }
+
+				u := gocloak.User{ID: &userID}
+				if em != "" { u.Email = &em; ev := true; u.EmailVerified = &ev }
+				if fn != "" { u.FirstName = &fn }
+				if ln != "" { u.LastName = &ln }
+				if enabledChanged { u.Enabled = &updEnabled }
+
+				if err := client.UpdateUser(ctx, token, realm, u); err != nil {
+					return fmt.Errorf("failed updating user %q in realm %s: %w", un, realm, err)
+				}
+				if pw != "" {
+					if err := client.SetPassword(ctx, token, userID, realm, pw, false); err != nil {
+						return fmt.Errorf("failed setting password for user %q in realm %s: %w", un, realm, err)
+					}
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Updated user %q (ID: %s) in realm %q.\n", un, userID, realm)
+				updated++
+			}
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "Done. Updated: %d, Skipped: %d.\n", updated, skipped)
+		return nil
+	},
+}
+
+var usersDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete user(s) in one or multiple realms",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if len(usernames) == 0 {
+			return errors.New("missing --username: provide at least one --username")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+		defer cancel()
+		client, token, err := keycloak.Login(ctx)
+		if err != nil { return err }
+
+		var targetRealms []string
+		if usersAllRealms {
+			realms, err := client.GetRealms(ctx, token)
+			if err != nil { return err }
+			for _, r := range realms { if r.Realm != nil { targetRealms = append(targetRealms, *r.Realm) } }
+		} else if len(usersRealms) > 0 {
+			targetRealms = append(targetRealms, usersRealms...)
+		} else {
+			r := defaultRealm
+			if r == "" { r = config.Global.Realm }
+			if r == "" { return errors.New("target realm not specified. Use --realm or set realm in config.json") }
+			targetRealms = []string{r}
+		}
+
+		deleted := 0
+		skipped := 0
+		for _, realm := range targetRealms {
+			for _, un := range usernames {
+				params := gocloak.GetUsersParams{Username: &un}
+				existing, err := client.GetUsers(ctx, token, realm, params)
+				if err != nil { return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err) }
+				if len(existing) == 0 {
+					if delIgnoreMiss {
+						fmt.Fprintf(cmd.OutOrStdout(), "User %q not found in realm %q. Skipped.\n", un, realm)
+						skipped++
+						continue
+					}
+					return fmt.Errorf("user %q not found in realm %s", un, realm)
+				}
+				userID := *existing[0].ID
+				if err := client.DeleteUser(ctx, token, realm, userID); err != nil {
+					return fmt.Errorf("failed deleting user %q in realm %s: %w", un, realm, err)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Deleted user %q (ID: %s) in realm %q.\n", un, userID, realm)
+				deleted++
+			}
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "Done. Deleted: %d, Skipped: %d.\n", deleted, skipped)
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(usersCmd)
 	usersCmd.AddCommand(usersCreateCmd)
@@ -201,4 +355,21 @@ func init() {
 	usersCreateCmd.Flags().StringSliceVar(&usersRealms, "realm", nil, "target realm(s). If omitted, uses default or config.json")
 	usersCreateCmd.Flags().BoolVar(&usersAllRealms, "all-realms", false, "create users in all realms")
 	usersCreateCmd.Flags().StringSliceVar(&realmRoleNames, "realm-role", nil, "realm role name(s) to assign to each created user")
+
+	usersCmd.AddCommand(usersUpdateCmd)
+	usersUpdateCmd.Flags().StringSliceVar(&usernames, "username", nil, "username(s) to update. Repeatable; required.")
+	usersUpdateCmd.Flags().StringSliceVar(&updEmails, "email", nil, "new email(s). Optional; 0, 1 or N matching --username.")
+	usersUpdateCmd.Flags().StringSliceVar(&updFirstNames, "first-name", nil, "new first name(s). Optional; 0, 1 or N.")
+	usersUpdateCmd.Flags().StringSliceVar(&updLastNames, "last-name", nil, "new last name(s). Optional; 0, 1 or N.")
+	usersUpdateCmd.Flags().StringSliceVar(&updPasswords, "password", nil, "new password(s). Optional; 0, 1 or N.")
+	usersUpdateCmd.Flags().BoolVar(&updEnabled, "enabled", true, "set enabled state for users; if flag is present, applies to all or per-user via 0/1/N not supported")
+	usersUpdateCmd.Flags().StringSliceVar(&usersRealms, "realm", nil, "target realm(s). If omitted, uses default or config.json")
+	usersUpdateCmd.Flags().BoolVar(&usersAllRealms, "all-realms", false, "update users in all realms")
+	usersUpdateCmd.Flags().BoolVar(&updIgnoreMiss, "ignore-missing", false, "skip users not found instead of failing")
+
+	usersCmd.AddCommand(usersDeleteCmd)
+	usersDeleteCmd.Flags().StringSliceVar(&usernames, "username", nil, "username(s) to delete. Repeatable; required.")
+	usersDeleteCmd.Flags().StringSliceVar(&usersRealms, "realm", nil, "target realm(s). If omitted, uses default or config.json")
+	usersDeleteCmd.Flags().BoolVar(&usersAllRealms, "all-realms", false, "delete users in all realms")
+	usersDeleteCmd.Flags().BoolVar(&delIgnoreMiss, "ignore-missing", false, "skip users not found instead of failing")
 }
