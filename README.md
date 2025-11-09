@@ -57,9 +57,41 @@ kc --help
   kc roles create --name <ROL> --description "<DESCRIPCION>" --all-realms
   ```
 
+ - **Crear múltiples roles con una sola descripción (se aplica a todos)**
+   ```bash
+   kc roles create \
+     --realm myrealm \
+     --name admin \
+     --name operator \
+     --name auditor \
+     --description "Roles base del sistema"
+   ```
+
+ - **Crear múltiples roles con descripciones por rol (ordenadas)**
+   ```bash
+   kc roles create \
+     --realm myrealm \
+     --name admin --description "Acceso total" \
+     --name operator --description "Operaciones limitadas" \
+     --name auditor --description "Solo lectura"
+   ```
+
+ - **Crear múltiples roles sin descripción**
+   ```bash
+   kc roles create --realm myrealm --name viewer --name reporter
+   ```
+
+ - **Crear múltiples roles en todos los realms**
+   ```bash
+   kc roles create --all-realms --name viewer --name auditor --description "Lectura global"
+   ```
+
 #### Flags específicos de `roles create`
-- `--name <ROL>` (requerido)
-- `--description <TEXTO>`
+- `--name <ROL>` Repetible. Debes proporcionar al menos un `--name` (requerido).
+- `--description <TEXTO>` Repetible. Opcional. Reglas:
+  - Sin `--description` → se crean sin descripción.
+  - Un solo `--description` → se aplica a todos los `--name`.
+  - Varios `--description` → deben ser exactamente uno por cada `--name`, en el mismo orden.
 - `--all-realms` Crea el rol en todos los realms
 - `--realm <REALM>` Realm destino (tiene prioridad sobre el global)
 
