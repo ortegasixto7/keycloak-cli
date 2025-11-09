@@ -100,3 +100,50 @@ Orden de prioridad cuando ejecutas `roles create` (de mayor a menor):
 1. Flag `--realm` del comando `roles create`.
 2. Flag global `--realm` del comando raíz.
 3. Valor `realm` en `config.json`.
+
+### Users
+- **Crear múltiples usuarios en un realm con una sola contraseña**
+  ```bash
+  kc users create \
+    --realm myrealm \
+    --username jdoe --username mjane \
+    --password "S3guro!" \
+    --first-name John --first-name Mary \
+    --last-name Doe --last-name Jane \
+    --email john@acme.com --email mary@acme.com
+  ```
+
+- **Crear usuarios con contraseñas por usuario y roles de realm**
+  ```bash
+  kc users create \
+    --realm myrealm \
+    --username a --password "Aa!1" --email a@acme.com \
+    --username b --password "Bb!2" --email b@acme.com \
+    --realm-role viewer --realm-role auditor
+  ```
+
+- **Crear usuarios en todos los realms, sin email (emailVerified=false)**
+  ```bash
+  kc users create \
+    --all-realms \
+    --username svc-1 --username svc-2 \
+    --enabled=false
+  ```
+
+- **Crear usuarios en múltiples realms específicos**
+  ```bash
+  kc users create \
+    --realm myrealm --realm sandbox \
+    --username test1 --password "Test!123"
+  ```
+
+#### Flags específicos de `users create`
+- `--username <USER>` Repetible. Debes proporcionar al menos un `--username` (requerido).
+- `--email <EMAIL>` Repetible. Opcional; 0, 1 o N (se empareja por orden con `--username`). Si se especifica email, `emailVerified` será `true`, si no, `false`.
+- `--first-name <NOMBRE>` Repetible. Opcional; 0, 1 o N.
+- `--last-name <APELLIDO>` Repetible. Opcional; 0, 1 o N.
+- `--password <PWD>` Repetible. Opcional; 0, 1 o N.
+- `--enabled` Booleano. Por defecto `true`. Puedes deshabilitar con `--enabled=false`.
+- `--realm <REALM>` Repetible. Realms destino. Si se omite y no usas `--all-realms`, se usa el realm por defecto (flag global o `config.json`).
+- `--all-realms` Crea en todos los realms.
+- `--realm-role <ROL>` Repetible. Asigna roles de realm existentes al usuario creado.
