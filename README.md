@@ -1,231 +1,231 @@
 # keycloak-cli
 
-## Descripción
-CLI para interactuar con Keycloak.
+## Description
+CLI to interact with Keycloak.
 
-## Uso
-Ejecuta el binario `kc` para ver la ayuda general.
+## Usage
+Run the `./kc.exe` binary to see the general help.
 
 ```bash
-kc --help
+./kc.exe --help
 ```
 
-## Compilar en Windows
+## Build on Windows
 
-- **En Windows (PowerShell o CMD)**
+- **On Windows (PowerShell or CMD)**
   ```powershell
   go build -o kc.exe .
   ```
 
-- **Desde macOS/Linux (cross-compile a Windows amd64)**
+- **From macOS/Linux (cross-compile to Windows amd64)**
   ```bash
   GOOS=windows GOARCH=amd64 go build -o kc.exe .
   ```
 
-- **Desde macOS/Linux (cross-compile a Windows arm64)**
+- **From macOS/Linux (cross-compile to Windows arm64)**
   ```bash
   GOOS=windows GOARCH=arm64 go build -o kc.exe .
   ```
 
-### Flags globales
-- `--config <ruta>`
-  Archivo de configuración (por defecto: `config.json` junto al binario o en el directorio actual).
-- `--realm <nombre>`
-  Realm por defecto a utilizar.
+### Global flags
+- `--config <path>`
+  Configuration file (default: `config.json` next to the binary or in the current directory).
+- `--realm <name>`
+  Default realm to use.
 
-## Comandos y ejemplos
+## Commands and examples
 
 ### Realms
-- **Listar realms**
+- **List realms**
   ```bash
-  kc realms list
+  ./kc.exe realms list
   ```
 
 ### Roles
-- **Crear un rol en un realm específico**
+- **Create a role in a specific realm**
   ```bash
-  kc roles create --name <ROL> --description "<DESCRIPCION>" --realm <REALM>
+  ./kc.exe roles create --name <ROLE> --description "<DESCRIPTION>" --realm <REALM>
   ```
 
-- **Crear un rol usando el realm por defecto**
+- **Create a role using the default realm**
   ```bash
-  kc roles create --name <ROL> --description "<DESCRIPCION>"
+  ./kc.exe roles create --name <ROLE> --description "<DESCRIPTION>"
   ```
 
-- **Crear un rol en todos los realms**
+- **Create a role in all realms**
   ```bash
-  kc roles create --name <ROL> --description "<DESCRIPCION>" --all-realms
+  ./kc.exe roles create --name <ROLE> --description "<DESCRIPTION>" --all-realms
   ```
 
- - **Crear múltiples roles con una sola descripción (se aplica a todos)**
+ - **Create multiple roles with a single description (applied to all)**
    ```bash
-   kc roles create \
+   ./kc.exe roles create \
      --realm myrealm \
      --name admin \
      --name operator \
      --name auditor \
-     --description "Roles base del sistema"
+     --description "Base system roles"
    ```
 
- - **Crear múltiples roles con descripciones por rol (ordenadas)**
+ - **Create multiple roles with per-role descriptions (ordered)**
    ```bash
-   kc roles create \
+   ./kc.exe roles create \
      --realm myrealm \
-     --name admin --description "Acceso total" \
-     --name operator --description "Operaciones limitadas" \
-     --name auditor --description "Solo lectura"
+     --name admin --description "Full access" \
+     --name operator --description "Limited operations" \
+     --name auditor --description "Read-only"
    ```
 
- - **Crear múltiples roles sin descripción**
+ - **Create multiple roles without description**
    ```bash
-   kc roles create --realm myrealm --name viewer --name reporter
+   ./kc.exe roles create --realm myrealm --name viewer --name reporter
    ```
 
- - **Crear múltiples roles en todos los realms**
+ - **Create multiple roles in all realms**
    ```bash
-   kc roles create --all-realms --name viewer --name auditor --description "Lectura global"
+   ./kc.exe roles create --all-realms --name viewer --name auditor --description "Global read"
    ```
 
-#### Flags específicos de `roles create`
-- `--name <ROL>` Repetible. Debes proporcionar al menos un `--name` (requerido).
-- `--description <TEXTO>` Repetible. Opcional. Reglas:
-  - Sin `--description` → se crean sin descripción.
-  - Un solo `--description` → se aplica a todos los `--name`.
-  - Varios `--description` → deben ser exactamente uno por cada `--name`, en el mismo orden.
-- `--all-realms` Crea el rol en todos los realms
-- `--realm <REALM>` Realm destino (tiene prioridad sobre el global)
+#### Flags specific to `roles create`
+- `--name <ROLE>` Repeatable. You must provide at least one `--name` (required).
+- `--description <TEXT>` Repeatable. Optional. Rules:
+  - No `--description` → roles are created without a description.
+  - A single `--description` → applied to all `--name`.
+  - Multiple `--description` → must be exactly one per `--name`, in the same order.
+- `--all-realms` Create the role in all realms
+- `--realm <REALM>` Target realm (takes precedence over the global one)
 
-#### Resolución del realm destino
-Orden de prioridad cuando ejecutas `roles create` (de mayor a menor):
-1. Flag `--realm` del comando `roles create`.
-2. Flag global `--realm` del comando raíz.
-3. Valor `realm` en `config.json`.
+#### Target realm resolution
+Priority order when you run `roles create` (from highest to lowest):
+1. `--realm` flag on the `roles create` command.
+2. Global `--realm` flag on the root command.
+3. `realm` value in `config.json`.
 
-#### Editar roles: `roles update`
-- **Actualizar descripción de varios roles en un realm**
+#### Edit roles: `roles update`
+- **Update the description of multiple roles in a realm**
   ```bash
-  kc roles update --realm myrealm \
+  ./kc.exe roles update --realm myrealm \
     --name admin --name operator \
-    --description "Nueva descripción"
+    --description "New description"
   ```
 
-- **Renombrar roles por orden en múltiples realms**
+- **Rename roles by order in multiple realms**
   ```bash
-  kc roles update \
+  ./kc.exe roles update \
     --realm myrealm --realm sandbox \
     --name viewer --new-name read_only \
     --name auditor --new-name audit_read
   ```
 
-Flags de `roles update`:
-- `--name <ROL>` Repetible. Requerido.
-- `--description <TEXTO>` Repetible. Opcional; 0, 1 o N (se empareja por orden con `--name`).
-- `--new-name <NUEVO>` Repetible. Opcional; 0, 1 o N (se empareja por orden con `--name`).
-- `--realm <REALM>` Realm destino. Si no se indica, usa el por defecto.
-- `--all-realms` Aplica en todos los realms.
-- `--ignore-missing` Si un rol no existe en el realm, omite en lugar de fallar.
+Flags for `roles update`:
+- `--name <ROLE>` Repeatable. Required.
+- `--description <TEXT>` Repeatable. Optional; 0, 1 or N (paired by order with `--name`).
+- `--new-name <NEW>` Repeatable. Optional; 0, 1 or N (paired by order with `--name`).
+- `--realm <REALM>` Target realm. If not provided, uses the default.
+- `--all-realms` Applies to all realms.
+- `--ignore-missing` If a role does not exist in the realm, skip instead of failing.
 
-#### Eliminar roles: `roles delete`
-- **Eliminar roles en todos los realms (saltando los inexistentes)**
+#### Delete roles: `roles delete`
+- **Delete roles in all realms (skipping non-existent ones)**
   ```bash
-  kc roles delete --all-realms \
+  ./kc.exe roles delete --all-realms \
     --name temp_role --name deprecated_role \
     --ignore-missing
   ```
 
-Flags de `roles delete`:
-- `--name <ROL>` Repetible. Requerido.
-- `--realm <REALM>` Realm destino. Si no se indica, usa el por defecto.
-- `--all-realms` Elimina en todos los realms.
-- `--ignore-missing` Si un rol no existe en el realm, omite en lugar de fallar.
+Flags for `roles delete`:
+- `--name <ROLE>` Repeatable. Required.
+- `--realm <REALM>` Repeatable. Target realms. If not provided, uses the default.
+- `--all-realms` Delete in all realms.
+- `--ignore-missing` Skip non-existent roles instead of failing.
 
 ### Users
-- **Crear múltiples usuarios en un realm con una sola contraseña**
+- **Create multiple users in a realm with a single password**
   ```bash
-  kc users create \
+  ./kc.exe users create \
     --realm myrealm \
     --username jdoe --username mjane \
-    --password "S3guro!" \
+    --password "Str0ng!" \
     --first-name John --first-name Mary \
     --last-name Doe --last-name Jane \
     --email john@acme.com --email mary@acme.com
   ```
 
-- **Crear usuarios con contraseñas por usuario y roles de realm**
+- **Create users with per-user passwords and realm roles**
   ```bash
-  kc users create \
+  ./kc.exe users create \
     --realm myrealm \
     --username a --password "Aa!1" --email a@acme.com \
     --username b --password "Bb!2" --email b@acme.com \
     --realm-role viewer --realm-role auditor
   ```
 
-- **Crear usuarios en todos los realms, sin email (emailVerified=false)**
+- **Create users in all realms, without email (emailVerified=false)**
   ```bash
-  kc users create \
+  ./kc.exe users create \
     --all-realms \
     --username svc-1 --username svc-2 \
     --enabled=false
   ```
 
-- **Crear usuarios en múltiples realms específicos**
+- **Create users in multiple specific realms**
   ```bash
-  kc users create \
+  ./kc.exe users create \
     --realm myrealm --realm sandbox \
     --username test1 --password "Test!123"
   ```
 
-#### Flags específicos de `users create`
-- `--username <USER>` Repetible. Debes proporcionar al menos un `--username` (requerido).
-- `--email <EMAIL>` Repetible. Opcional; 0, 1 o N (se empareja por orden con `--username`). Si se especifica email, `emailVerified` será `true`, si no, `false`.
-- `--first-name <NOMBRE>` Repetible. Opcional; 0, 1 o N.
-- `--last-name <APELLIDO>` Repetible. Opcional; 0, 1 o N.
-- `--password <PWD>` Repetible. Opcional; 0, 1 o N.
-- `--enabled` Booleano. Por defecto `true`. Puedes deshabilitar con `--enabled=false`.
-- `--realm <REALM>` Repetible. Realms destino. Si se omite y no usas `--all-realms`, se usa el realm por defecto (flag global o `config.json`).
-- `--all-realms` Crea en todos los realms.
-- `--realm-role <ROL>` Repetible. Asigna roles de realm existentes al usuario creado.
+#### Flags specific to `users create`
+- `--username <USER>` Repeatable. You must provide at least one `--username` (required).
+- `--email <EMAIL>` Repeatable. Optional; 0, 1 or N (paired by order with `--username`). If email is provided, `emailVerified` will be `true`, otherwise `false`.
+- `--first-name <FIRST>` Repeatable. Optional; 0, 1 or N.
+- `--last-name <LAST>` Repeatable. Optional; 0, 1 or N.
+- `--password <PWD>` Repeatable. Optional; 0, 1 or N.
+- `--enabled` Boolean. Default `true`. You can disable with `--enabled=false`.
+- `--realm <REALM>` Repeatable. Target realms. If omitted and you don't use `--all-realms`, the default realm is used (global flag or `config.json`).
+- `--all-realms` Create in all realms.
+- `--realm-role <ROLE>` Repeatable. Assign existing realm roles to the created user.
 
-#### Editar usuarios: `users update`
-- **Actualizar contraseña y habilitar múltiples usuarios**
+#### Edit users: `users update`
+- **Update password and enable multiple users**
   ```bash
-  kc users update \
+  ./kc.exe users update \
     --realm myrealm \
     --username jdoe --username mjane \
-    --password "Nuev4!" \
+    --password "N3wP@ss!" \
     --enabled=true
   ```
 
-- **Actualizar campos por usuario (ordenados)**
+- **Update fields per user (ordered)**
   ```bash
-  kc users update \
+  ./kc.exe users update \
     --realm myrealm \
-    --username a --email a@acme.com --first-name Ana --last-name A \
-    --username b --email b@acme.com --first-name Beto --last-name B
+    --username a --email a@acme.com --first-name Ann --last-name A \
+    --username b --email b@acme.com --first-name Ben --last-name B
   ```
 
-Flags de `users update`:
-- `--username <USER>` Repetible. Requerido.
-- `--email <EMAIL>` Repetible. 0, 1 o N (empareja por orden). Si se especifica, `emailVerified=true`.
-- `--first-name <NOMBRE>` Repetible. 0, 1 o N.
-- `--last-name <APELLIDO>` Repetible. 0, 1 o N.
-- `--password <PWD>` Repetible. 0, 1 o N.
-- `--enabled` Booleano. Si se incluye el flag, aplica el valor a los usuarios objetivo.
-- `--realm <REALM>` Repetible. Realms destino.
-- `--all-realms` Aplica en todos los realms.
-- `--ignore-missing` Omite usuarios inexistentes en lugar de fallar.
+Flags for `users update`:
+- `--username <USER>` Repeatable. Required.
+- `--email <EMAIL>` Repeatable. 0, 1 or N (paired by order). If specified, `emailVerified=true`.
+- `--first-name <FIRST>` Repeatable. 0, 1 or N.
+- `--last-name <LAST>` Repeatable. 0, 1 or N.
+- `--password <PWD>` Repeatable. 0, 1 or N.
+- `--enabled` Boolean. If the flag is included, apply the value to the target users.
+- `--realm <REALM>` Repeatable. Target realms.
+- `--all-realms` Applies to all realms.
+- `--ignore-missing` Skip non-existent users instead of failing.
 
-#### Eliminar usuarios: `users delete`
-- **Eliminar usuarios en múltiples realms, ignorando inexistentes**
+#### Delete users: `users delete`
+- **Delete users in multiple realms, ignoring non-existent ones**
   ```bash
-  kc users delete \
+  ./kc.exe users delete \
     --realm myrealm --realm sandbox \
     --username olduser1 --username olduser2 \
     --ignore-missing
   ```
 
-Flags de `users delete`:
-- `--username <USER>` Repetible. Requerido.
-- `--realm <REALM>` Repetible. Realms destino.
-- `--all-realms` Elimina en todos los realms.
-- `--ignore-missing` Omite usuarios inexistentes en lugar de fallar.
+Flags for `users delete`:
+- `--username <USER>` Repeatable. Required.
+- `--realm <REALM>` Repeatable. Target realms.
+- `--all-realms` Delete in all realms.
+- `--ignore-missing` Skip non-existent users instead of failing.
