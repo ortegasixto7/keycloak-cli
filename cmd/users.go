@@ -42,7 +42,7 @@ var usersCmd = &cobra.Command{
 var usersCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create user(s) in one or multiple realms",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
 		if len(usernames) == 0 {
 			return errors.New("missing --username: provide at least one --username")
 		}
@@ -194,13 +194,13 @@ var usersCreateCmd = &cobra.Command{
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Done. Created: %d, Skipped: %d.\n", created, skipped)
 		return nil
-	},
+	}),
 }
 
 var usersUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update user(s) in one or multiple realms",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
 		if len(usernames) == 0 {
 			return errors.New("missing --username: provide at least one --username")
 		}
@@ -286,13 +286,14 @@ var usersUpdateCmd = &cobra.Command{
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Done. Updated: %d, Skipped: %d.\n", updated, skipped)
 		return nil
-	},
+	}),
+
 }
 
 var usersDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete user(s) in one or multiple realms",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
 		if len(usernames) == 0 {
 			return errors.New("missing --username: provide at least one --username")
 		}
@@ -340,7 +341,7 @@ var usersDeleteCmd = &cobra.Command{
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Done. Deleted: %d, Skipped: %d.\n", deleted, skipped)
 		return nil
-	},
+	}),
 }
 
 func init() {

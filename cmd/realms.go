@@ -18,7 +18,7 @@ var realmsCmd = &cobra.Command{
 var realmsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List realms",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		client, token, err := keycloak.Login(ctx)
@@ -36,7 +36,7 @@ var realmsListCmd = &cobra.Command{
 		}
 		fmt.Fprintf(cmd.OutOrStdout(), "Total: %d\n", len(realms))
 		return nil
-	},
+	}),
 }
 
 func init() {
