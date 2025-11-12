@@ -229,3 +229,110 @@ Flags for `users delete`:
 - `--realm <REALM>` Repeatable. Target realms.
 - `--all-realms` Delete in all realms.
 - `--ignore-missing` Skip non-existent users instead of failing.
+
+### Clients
+- **Create client(s)**
+  ```bash
+  ./kc.exe clients create \
+    --realm myrealm \
+    --client-id app-frontend \
+    --name "App Frontend" \
+    --public=true \
+    --redirect-uri https://app.example.com/callback \
+    --web-origin https://app.example.com
+  ```
+
+- **Update client(s)**
+  ```bash
+  ./kc.exe clients update \
+    --realm myrealm \
+    --client-id app-frontend \
+    --name "App Frontend v2" \
+    --root-url https://app.example.com \
+    --base-url /
+  ```
+
+- **Delete client(s)**
+  ```bash
+  ./kc.exe clients delete --realm myrealm --client-id app-frontend --ignore-missing
+  ```
+
+- **List clients**
+  ```bash
+  ./kc.exe clients list --realm myrealm
+  ```
+
+Flags para `clients` (principales):
+- `--client-id <ID>` Repeatable en create/update/delete. Requerido para create/update/delete.
+- `--name`, `--public`, `--enabled`, `--protocol`, `--root-url`, `--base-url`.
+- `--redirect-uri`, `--web-origin` (lista aplicada a todos los seleccionados cuando se usa en update/create).
+- `--standard-flow`, `--direct-access`, `--implicit-flow`, `--service-accounts` (bool 0/1/N).
+- `--new-client-id` para renombrar en `update` (0/1/N).
+- `--realm` (0/1/N) o `--all-realms`.
+- `--ignore-missing` en `update/delete` para omitir inexistentes.
+
+Nota:
+- El seteo explícito de `--secret` no está soportado por la librería usada; el comando emitirá un warning y lo omitirá.
+
+#### Asignar scopes a un client
+- **Asignar scopes**
+  ```bash
+  ./kc.exe clients scopes assign \
+    --realm myrealm \
+    --client-id app-frontend \
+    --type default \
+    --scope profile --scope email
+  ```
+
+- **Remover scopes**
+  ```bash
+  ./kc.exe clients scopes remove \
+    --realm myrealm \
+    --client-id app-frontend \
+    --type optional \
+    --scope address --ignore-missing
+  ```
+
+Flags:
+- `--client-id <ID>` Requerido.
+- `--scope <NAME>` Repeatable. Requerido.
+- `--type default|optional` (default: `default`).
+- `--realm` requerido (o global), o `--all-realms` en assign/remove si deseas aplicar a múltiples realms.
+- `--ignore-missing` en remove para omitir scopes no asignados.
+
+### Client Scopes
+- **Crear client scopes**
+  ```bash
+  ./kc.exe client-scopes create \
+    --realm myrealm \
+    --name profile --description "Standard profile" --protocol openid-connect
+  ```
+
+- **Actualizar client scopes**
+  ```bash
+  ./kc.exe client-scopes update \
+    --realm myrealm \
+    --name profile --new-name profile_v2 --description "Updated"
+  ```
+
+- **Eliminar client scopes**
+  ```bash
+  ./kc.exe client-scopes delete --realm myrealm --name profile --ignore-missing
+  ```
+
+- **Listar client scopes**
+  ```bash
+  ./kc.exe client-scopes list --realm myrealm
+  ```
+
+Flags para `client-scopes`:
+- `--name <NAME>` Repeatable. Requerido en create/update/delete.
+- `--description`, `--protocol` (0/1/N). `protocol` por defecto: `openid-connect`.
+- `--new-name` en update (0/1/N).
+- `--realm` o `--all-realms`.
+- `--ignore-missing` en update/delete para omitir inexistentes.
+
+## Logging
+- Toda la salida estándar y de error se duplica en `kc.log` (en el directorio de ejecución o según `--log-file`).
+- Cada comando imprime marcas de tiempo `START`/`END` y errores con su duración.
+
