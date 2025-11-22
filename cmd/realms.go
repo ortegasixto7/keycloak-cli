@@ -29,12 +29,14 @@ var realmsListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		lines := make([]string, 0, len(realms)+1)
 		for _, r := range realms {
 			if r.Realm != nil {
-				fmt.Fprintln(cmd.OutOrStdout(), *r.Realm)
+				lines = append(lines, *r.Realm)
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Total: %d\n", len(realms))
+		lines = append(lines, fmt.Sprintf("Total: %d", len(realms)))
+		printBox(cmd, lines, "all realms")
 		return nil
 	}),
 }

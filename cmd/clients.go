@@ -15,24 +15,24 @@ import (
 )
 
 var (
-	cliIDs              []string
-	cliNames            []string
-	cliPublics          []bool
-	cliSecrets          []string
-	cliEnabled          []bool
-	cliProtocols        []string
-	cliRootURLs         []string
-	cliBaseURLs         []string
-	cliRedirectURIs     [][]string
-	cliWebOrigins       [][]string
-	cliStandardFlows    []bool
-	cliDirectAccess     []bool
-	cliImplicitFlows    []bool
-	cliServiceAccounts  []bool
-	cliNewClientIDs     []string
-	clientsRealms       []string
-	clientsAllRealms    bool
-	clientsIgnoreMiss   bool
+	cliIDs             []string
+	cliNames           []string
+	cliPublics         []bool
+	cliSecrets         []string
+	cliEnabled         []bool
+	cliProtocols       []string
+	cliRootURLs        []string
+	cliBaseURLs        []string
+	cliRedirectURIs    [][]string
+	cliWebOrigins      [][]string
+	cliStandardFlows   []bool
+	cliDirectAccess    []bool
+	cliImplicitFlows   []bool
+	cliServiceAccounts []bool
+	cliNewClientIDs    []string
+	clientsRealms      []string
+	clientsAllRealms   bool
+	clientsIgnoreMiss  bool
 
 	// scopes subcommand
 	scopeClientID   string
@@ -50,27 +50,43 @@ func resolveRealmsForClients(cmd *cobra.Command) ([]string, error) {
 	if clientsAllRealms {
 		ctx := cmd.Context()
 		client, token, err := keycloak.Login(ctx)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		realms, err := client.GetRealms(ctx, token)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		var rs []string
-		for _, r := range realms { if r.Realm != nil { rs = append(rs, *r.Realm) } }
+		for _, r := range realms {
+			if r.Realm != nil {
+				rs = append(rs, *r.Realm)
+			}
+		}
 		return rs, nil
 	}
 	if len(clientsRealms) > 0 {
 		return append([]string{}, clientsRealms...), nil
 	}
 	r := defaultRealm
-	if r == "" { r = config.Global.Realm }
-	if r == "" { return nil, errors.New("target realm not specified. Use --realm or set realm in config.json") }
+	if r == "" {
+		r = config.Global.Realm
+	}
+	if r == "" {
+		return nil, errors.New("target realm not specified. Use --realm or set realm in config.json")
+	}
 	return []string{r}, nil
 }
 
 // Helper to pick value 0/1/N aligned to index i
 func pick[T any](vals []T, i int) (T, bool) {
 	var zero T
-	if len(vals) == 1 { return vals[0], true }
-	if len(vals) > 1 { return vals[i], true }
+	if len(vals) == 1 {
+		return vals[0], true
+	}
+	if len(vals) > 1 {
+		return vals[i], true
+	}
 	return zero, false
 }
 
@@ -92,51 +108,98 @@ var clientsCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create client(s)",
 	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
-		if len(cliIDs) == 0 { return errors.New("missing --client-id: provide at least one --client-id") }
+		if len(cliIDs) == 0 {
+			return errors.New("missing --client-id: provide at least one --client-id")
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		gc, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		realms, err := resolveRealmsForClients(cmd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		created, skipped := 0, 0
+		var lines []string
 		for _, realm := range realms {
 			for i, cid := range cliIDs {
 				// existence
 				// existence via GetClients filter
 				existing, err := getClientByClientID(ctx, gc, token, realm, cid)
 				if err == nil && existing != nil && existing.ID != nil {
-					fmt.Fprintf(cmd.OutOrStdout(), "Client %q already exists in realm %q. Skipped.\n", cid, realm)
+					lines = append(lines, fmt.Sprintf("Client %q already exists in realm %q. Skipped.", cid, realm))
 					skipped++
 					continue
 				}
 				var name, secret, protocol, rootURL, baseURL string
-				if v, ok := pick(cliNames, i); ok { name = v }
-				if v, ok := pick(cliSecrets, i); ok { secret = v }
-				if v, ok := pick(cliProtocols, i); ok { protocol = v }
-				if v, ok := pick(cliRootURLs, i); ok { rootURL = v }
-				if v, ok := pick(cliBaseURLs, i); ok { baseURL = v }
+				if v, ok := pick(cliNames, i); ok {
+					name = v
+				}
+				if v, ok := pick(cliSecrets, i); ok {
+					secret = v
+				}
+				if v, ok := pick(cliProtocols, i); ok {
+					protocol = v
+				}
+				if v, ok := pick(cliRootURLs, i); ok {
+					rootURL = v
+				}
+				if v, ok := pick(cliBaseURLs, i); ok {
+					baseURL = v
+				}
 				var enabled, publicClient, stdFlow, direct, implicit, svcAcct bool
-				if v, ok := pick(cliEnabled, i); ok { enabled = v } else { enabled = true }
-				if v, ok := pick(cliPublics, i); ok { publicClient = v }
-				if v, ok := pick(cliStandardFlows, i); ok { stdFlow = v }
-				if v, ok := pick(cliDirectAccess, i); ok { direct = v }
-				if v, ok := pick(cliImplicitFlows, i); ok { implicit = v }
-				if v, ok := pick(cliServiceAccounts, i); ok { svcAcct = v }
+				if v, ok := pick(cliEnabled, i); ok {
+					enabled = v
+				} else {
+					enabled = true
+				}
+				if v, ok := pick(cliPublics, i); ok {
+					publicClient = v
+				}
+				if v, ok := pick(cliStandardFlows, i); ok {
+					stdFlow = v
+				}
+				if v, ok := pick(cliDirectAccess, i); ok {
+					direct = v
+				}
+				if v, ok := pick(cliImplicitFlows, i); ok {
+					implicit = v
+				}
+				if v, ok := pick(cliServiceAccounts, i); ok {
+					svcAcct = v
+				}
 
-				cl := gocloak.Client{ ClientID: &cid }
-				if name != "" { cl.Name = &name }
+				cl := gocloak.Client{ClientID: &cid}
+				if name != "" {
+					cl.Name = &name
+				}
 				cl.Enabled = &enabled
 				cl.PublicClient = &publicClient
-				if protocol != "" { cl.Protocol = &protocol }
-				if rootURL != "" { cl.RootURL = &rootURL }
-				if baseURL != "" { cl.BaseURL = &baseURL }
-				if stdFlow { cl.StandardFlowEnabled = &stdFlow }
-				if direct { cl.DirectAccessGrantsEnabled = &direct }
-				if implicit { cl.ImplicitFlowEnabled = &implicit }
-				if svcAcct { cl.ServiceAccountsEnabled = &svcAcct }
+				if protocol != "" {
+					cl.Protocol = &protocol
+				}
+				if rootURL != "" {
+					cl.RootURL = &rootURL
+				}
+				if baseURL != "" {
+					cl.BaseURL = &baseURL
+				}
+				if stdFlow {
+					cl.StandardFlowEnabled = &stdFlow
+				}
+				if direct {
+					cl.DirectAccessGrantsEnabled = &direct
+				}
+				if implicit {
+					cl.ImplicitFlowEnabled = &implicit
+				}
+				if svcAcct {
+					cl.ServiceAccountsEnabled = &svcAcct
+				}
 
 				id, err := gc.CreateClient(ctx, token, realm, cl)
 				if err != nil {
@@ -166,11 +229,20 @@ var clientsCreateCmd = &cobra.Command{
 					}
 				}
 
-				fmt.Fprintf(cmd.OutOrStdout(), "Created client %q (ID: %s) in realm %q.\n", cid, id, realm)
+				lines = append(lines, fmt.Sprintf("Created client %q (ID: %s) in realm %q.", cid, id, realm))
 				created++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Created: %d, Skipped: %d.\n", created, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Created: %d, Skipped: %d.", created, skipped))
+		realmLabel := ""
+		if clientsAllRealms {
+			realmLabel = "all realms"
+		} else if len(clientsRealms) == 1 {
+			realmLabel = clientsRealms[0]
+		} else if len(realms) == 1 {
+			realmLabel = realms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -179,25 +251,34 @@ var clientsUpdateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Update client(s)",
 	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
-		if len(cliIDs) == 0 { return errors.New("missing --client-id: provide at least one --client-id") }
+		if len(cliIDs) == 0 {
+			return errors.New("missing --client-id: provide at least one --client-id")
+		}
 		// Must have at least one field to update
 		any := len(cliNames) > 0 || len(cliPublics) > 0 || len(cliSecrets) > 0 || len(cliEnabled) > 0 || len(cliProtocols) > 0 || len(cliRootURLs) > 0 || len(cliBaseURLs) > 0 || len(cliRedirectURIs) > 0 || len(cliWebOrigins) > 0 || len(cliStandardFlows) > 0 || len(cliDirectAccess) > 0 || len(cliImplicitFlows) > 0 || len(cliServiceAccounts) > 0 || len(cliNewClientIDs) > 0
-		if !any { return errors.New("nothing to update: provide at least one field flag") }
+		if !any {
+			return errors.New("nothing to update: provide at least one field flag")
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		gc, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		realms, err := resolveRealmsForClients(cmd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		updated, skipped := 0, 0
+		var lines []string
 		for _, realm := range realms {
 			for i, cid := range cliIDs {
 				c, err := getClientByClientID(ctx, gc, token, realm, cid)
 				if err != nil || c == nil || c.ID == nil {
 					if clientsIgnoreMiss {
-						fmt.Fprintf(cmd.OutOrStdout(), "Client %q not found in realm %q. Skipped.\n", cid, realm)
+						lines = append(lines, fmt.Sprintf("Client %q not found in realm %q. Skipped.", cid, realm))
 						skipped++
 						continue
 					}
@@ -205,18 +286,42 @@ var clientsUpdateCmd = &cobra.Command{
 				}
 				id := *c.ID
 				// Apply updates
-				if v, ok := pick(cliNames, i); ok { c.Name = &v }
-				if v, ok := pick(cliPublics, i); ok { c.PublicClient = &v }
-				if v, ok := pick(cliEnabled, i); ok { c.Enabled = &v }
-				if v, ok := pick(cliProtocols, i); ok { c.Protocol = &v }
-				if v, ok := pick(cliRootURLs, i); ok { c.RootURL = &v }
-				if v, ok := pick(cliBaseURLs, i); ok { c.BaseURL = &v }
-				if v, ok := pick(cliStandardFlows, i); ok { c.StandardFlowEnabled = &v }
-				if v, ok := pick(cliDirectAccess, i); ok { c.DirectAccessGrantsEnabled = &v }
-				if v, ok := pick(cliImplicitFlows, i); ok { c.ImplicitFlowEnabled = &v }
-				if v, ok := pick(cliServiceAccounts, i); ok { c.ServiceAccountsEnabled = &v }
-				if i < len(cliRedirectURIs) && len(cliRedirectURIs[i]) > 0 { c.RedirectURIs = &cliRedirectURIs[i] }
-				if i < len(cliWebOrigins) && len(cliWebOrigins[i]) > 0 { c.WebOrigins = &cliWebOrigins[i] }
+				if v, ok := pick(cliNames, i); ok {
+					c.Name = &v
+				}
+				if v, ok := pick(cliPublics, i); ok {
+					c.PublicClient = &v
+				}
+				if v, ok := pick(cliEnabled, i); ok {
+					c.Enabled = &v
+				}
+				if v, ok := pick(cliProtocols, i); ok {
+					c.Protocol = &v
+				}
+				if v, ok := pick(cliRootURLs, i); ok {
+					c.RootURL = &v
+				}
+				if v, ok := pick(cliBaseURLs, i); ok {
+					c.BaseURL = &v
+				}
+				if v, ok := pick(cliStandardFlows, i); ok {
+					c.StandardFlowEnabled = &v
+				}
+				if v, ok := pick(cliDirectAccess, i); ok {
+					c.DirectAccessGrantsEnabled = &v
+				}
+				if v, ok := pick(cliImplicitFlows, i); ok {
+					c.ImplicitFlowEnabled = &v
+				}
+				if v, ok := pick(cliServiceAccounts, i); ok {
+					c.ServiceAccountsEnabled = &v
+				}
+				if i < len(cliRedirectURIs) && len(cliRedirectURIs[i]) > 0 {
+					c.RedirectURIs = &cliRedirectURIs[i]
+				}
+				if i < len(cliWebOrigins) && len(cliWebOrigins[i]) > 0 {
+					c.WebOrigins = &cliWebOrigins[i]
+				}
 
 				if err := gc.UpdateClient(ctx, token, realm, *c); err != nil {
 					return fmt.Errorf("failed updating client %q in realm %s: %w", cid, realm, err)
@@ -230,11 +335,20 @@ var clientsUpdateCmd = &cobra.Command{
 						return fmt.Errorf("failed renaming client %q to %q in realm %s: %w", cid, v, realm, err)
 					}
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Updated client %q (ID: %s) in realm %q.\n", cid, id, realm)
+				lines = append(lines, fmt.Sprintf("Updated client %q (ID: %s) in realm %q.", cid, id, realm))
 				updated++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Updated: %d, Skipped: %d.\n", updated, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Updated: %d, Skipped: %d.", updated, skipped))
+		realmLabel := ""
+		if clientsAllRealms {
+			realmLabel = "all realms"
+		} else if len(clientsRealms) == 1 {
+			realmLabel = clientsRealms[0]
+		} else if len(realms) == 1 {
+			realmLabel = realms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -243,15 +357,22 @@ var clientsDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete client(s)",
 	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
-		if len(cliIDs) == 0 { return errors.New("missing --client-id: provide at least one --client-id") }
+		if len(cliIDs) == 0 {
+			return errors.New("missing --client-id: provide at least one --client-id")
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		gc, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		realms, err := resolveRealmsForClients(cmd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		deleted, skipped := 0, 0
+		var lines []string
 		for _, realm := range realms {
 			for _, cid := range cliIDs {
 				c, err := getClientByClientID(ctx, gc, token, realm, cid)
@@ -266,11 +387,20 @@ var clientsDeleteCmd = &cobra.Command{
 				if err := gc.DeleteClient(ctx, token, realm, *c.ID); err != nil {
 					return fmt.Errorf("failed deleting client %q in realm %s: %w", cid, realm, err)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Deleted client %q (ID: %s) in realm %q.\n", cid, *c.ID, realm)
+				lines = append(lines, fmt.Sprintf("Deleted client %q (ID: %s) in realm %q.", cid, *c.ID, realm))
 				deleted++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Deleted: %d, Skipped: %d.\n", deleted, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Deleted: %d, Skipped: %d.", deleted, skipped))
+		realmLabel := ""
+		if clientsAllRealms {
+			realmLabel = "all realms"
+		} else if len(clientsRealms) == 1 {
+			realmLabel = clientsRealms[0]
+		} else if len(realms) == 1 {
+			realmLabel = realms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -282,11 +412,16 @@ var clientsListCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
 		gc, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		realms, err := resolveRealmsForClients(cmd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		total := 0
+		lines := []string{}
 		for _, realm := range realms {
 			params := gocloak.GetClientsParams{}
 			// when filter by client-id provided as single value, we can use Search or ClientID
@@ -294,15 +429,26 @@ var clientsListCmd = &cobra.Command{
 				params.ClientID = &cliIDs[0]
 			}
 			clients, err := gc.GetClients(ctx, token, realm, params)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			for _, c := range clients {
 				if c.ClientID != nil {
-					fmt.Fprintln(cmd.OutOrStdout(), *c.ClientID)
+					lines = append(lines, *c.ClientID)
 					total++
 				}
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Total: %d\n", total)
+		lines = append(lines, fmt.Sprintf("Total: %d", total))
+		realmLabel := ""
+		if clientsAllRealms {
+			realmLabel = "all realms"
+		} else if len(clientsRealms) == 1 {
+			realmLabel = clientsRealms[0]
+		} else if len(realms) == 1 {
+			realmLabel = realms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -316,32 +462,54 @@ var clientsScopesAssignCmd = &cobra.Command{
 	Use:   "assign",
 	Short: "Assign client scopes to a client",
 	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
-		if scopeClientID == "" { return errors.New("missing --client-id") }
-		if len(scopeNames) == 0 { return errors.New("missing --scope: provide at least one --scope") }
-		if scopeType != "default" && scopeType != "optional" { return errors.New("invalid --type: must be 'default' or 'optional'") }
+		if scopeClientID == "" {
+			return errors.New("missing --client-id")
+		}
+		if len(scopeNames) == 0 {
+			return errors.New("missing --scope: provide at least one --scope")
+		}
+		if scopeType != "default" && scopeType != "optional" {
+			return errors.New("invalid --type: must be 'default' or 'optional'")
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		gc, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		realms, err := resolveRealmsForClients(cmd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		assigned, skipped := 0, 0
+		var lines []string
 		for _, realm := range realms {
 			client, err := getClientByClientID(ctx, gc, token, realm, scopeClientID)
-			if err != nil || client == nil || client.ID == nil { return fmt.Errorf("client %q not found in realm %s", scopeClientID, realm) }
+			if err != nil || client == nil || client.ID == nil {
+				return fmt.Errorf("client %q not found in realm %s", scopeClientID, realm)
+			}
 			clientID := *client.ID
 			// cache scopes in realm
 			realmScopes, err := gc.GetClientScopes(ctx, token, realm)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			for _, sn := range scopeNames {
 				var scopeID string
-				for _, sc := range realmScopes { if sc.Name != nil && *sc.Name == sn && sc.ID != nil { scopeID = *sc.ID; break } }
-				if scopeID == "" { return fmt.Errorf("client scope %q not found in realm %s", sn, realm) }
+				for _, sc := range realmScopes {
+					if sc.Name != nil && *sc.Name == sn && sc.ID != nil {
+						scopeID = *sc.ID
+						break
+					}
+				}
+				if scopeID == "" {
+					return fmt.Errorf("client scope %q not found in realm %s", sn, realm)
+				}
 				if scopeType == "default" {
 					if err := gc.AddDefaultScopeToClient(ctx, token, realm, clientID, scopeID); err != nil {
 						if strings.Contains(strings.ToLower(err.Error()), "409") {
-							fmt.Fprintf(cmd.OutOrStdout(), "Scope %q already default for client %q in realm %q. Skipped.\n", sn, scopeClientID, realm)
+							lines = append(lines, fmt.Sprintf("Scope %q already default for client %q in realm %q. Skipped.", sn, scopeClientID, realm))
 							skipped++
 							continue
 						}
@@ -350,18 +518,27 @@ var clientsScopesAssignCmd = &cobra.Command{
 				} else {
 					if err := gc.AddOptionalScopeToClient(ctx, token, realm, clientID, scopeID); err != nil {
 						if strings.Contains(strings.ToLower(err.Error()), "409") {
-							fmt.Fprintf(cmd.OutOrStdout(), "Scope %q already optional for client %q in realm %q. Skipped.\n", sn, scopeClientID, realm)
+							lines = append(lines, fmt.Sprintf("Scope %q already optional for client %q in realm %q. Skipped.", sn, scopeClientID, realm))
 							skipped++
 							continue
 						}
 						return fmt.Errorf("failed assigning optional scope %q to client %q in realm %s: %w", sn, scopeClientID, realm, err)
 					}
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Assigned %s scope %q to client %q in realm %q.\n", scopeType, sn, scopeClientID, realm)
+				lines = append(lines, fmt.Sprintf("Assigned %s scope %q to client %q in realm %q.", scopeType, sn, scopeClientID, realm))
 				assigned++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Assigned: %d, Skipped: %d.\n", assigned, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Assigned: %d, Skipped: %d.", assigned, skipped))
+		realmLabel := ""
+		if clientsAllRealms {
+			realmLabel = "all realms"
+		} else if len(clientsRealms) == 1 {
+			realmLabel = clientsRealms[0]
+		} else if len(realms) == 1 {
+			realmLabel = realms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -370,30 +547,50 @@ var clientsScopesRemoveCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove client scopes from a client",
 	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
-		if scopeClientID == "" { return errors.New("missing --client-id") }
-		if len(scopeNames) == 0 { return errors.New("missing --scope: provide at least one --scope") }
-		if scopeType != "default" && scopeType != "optional" { return errors.New("invalid --type: must be 'default' or 'optional'") }
+		if scopeClientID == "" {
+			return errors.New("missing --client-id")
+		}
+		if len(scopeNames) == 0 {
+			return errors.New("missing --scope: provide at least one --scope")
+		}
+		if scopeType != "default" && scopeType != "optional" {
+			return errors.New("invalid --type: must be 'default' or 'optional'")
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		gc, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 		realms, err := resolveRealmsForClients(cmd)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		removed, skipped := 0, 0
+		var lines []string
 		for _, realm := range realms {
 			client, err := getClientByClientID(ctx, gc, token, realm, scopeClientID)
-			if err != nil || client == nil || client.ID == nil { return fmt.Errorf("client %q not found in realm %s", scopeClientID, realm) }
+			if err != nil || client == nil || client.ID == nil {
+				return fmt.Errorf("client %q not found in realm %s", scopeClientID, realm)
+			}
 			clientID := *client.ID
 			// cache realm scopes
 			realmScopes, err := gc.GetClientScopes(ctx, token, realm)
-			if err != nil { return err }
+			if err != nil {
+				return err
+			}
 			for _, sn := range scopeNames {
 				var scopeID string
-				for _, sc := range realmScopes { if sc.Name != nil && *sc.Name == sn && sc.ID != nil { scopeID = *sc.ID; break } }
+				for _, sc := range realmScopes {
+					if sc.Name != nil && *sc.Name == sn && sc.ID != nil {
+						scopeID = *sc.ID
+						break
+					}
+				}
 				if scopeID == "" {
 					if scopeIgnoreMiss {
-						fmt.Fprintf(cmd.OutOrStdout(), "Client scope %q not found in realm %q. Skipped.\n", sn, realm)
+						lines = append(lines, fmt.Sprintf("Client scope %q not found in realm %q. Skipped.", sn, realm))
 						skipped++
 						continue
 					}
@@ -402,7 +599,7 @@ var clientsScopesRemoveCmd = &cobra.Command{
 				if scopeType == "default" {
 					if err := gc.RemoveDefaultScopeFromClient(ctx, token, realm, clientID, scopeID); err != nil {
 						if strings.Contains(strings.ToLower(err.Error()), "404") && scopeIgnoreMiss {
-							fmt.Fprintf(cmd.OutOrStdout(), "Default scope %q not assigned to client %q in realm %q. Skipped.\n", sn, scopeClientID, realm)
+							lines = append(lines, fmt.Sprintf("Default scope %q not assigned to client %q in realm %q. Skipped.", sn, scopeClientID, realm))
 							skipped++
 							continue
 						}
@@ -411,18 +608,27 @@ var clientsScopesRemoveCmd = &cobra.Command{
 				} else {
 					if err := gc.RemoveOptionalScopeFromClient(ctx, token, realm, clientID, scopeID); err != nil {
 						if strings.Contains(strings.ToLower(err.Error()), "404") && scopeIgnoreMiss {
-							fmt.Fprintf(cmd.OutOrStdout(), "Optional scope %q not assigned to client %q in realm %q. Skipped.\n", sn, scopeClientID, realm)
+							lines = append(lines, fmt.Sprintf("Optional scope %q not assigned to client %q in realm %q. Skipped.", sn, scopeClientID, realm))
 							skipped++
 							continue
 						}
 						return fmt.Errorf("failed removing optional scope %q from client %q in realm %s: %w", sn, scopeClientID, realm, err)
 					}
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Removed %s scope %q from client %q in realm %q.\n", scopeType, sn, scopeClientID, realm)
+				lines = append(lines, fmt.Sprintf("Removed %s scope %q from client %q in realm %q.", scopeType, sn, scopeClientID, realm))
 				removed++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Removed: %d, Skipped: %d.\n", removed, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Removed: %d, Skipped: %d.", removed, skipped))
+		realmLabel := ""
+		if clientsAllRealms {
+			realmLabel = "all realms"
+		} else if len(clientsRealms) == 1 {
+			realmLabel = clientsRealms[0]
+		} else if len(realms) == 1 {
+			realmLabel = realms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -495,14 +701,18 @@ func init() {
 			list, _ := cmd.Flags().GetStringSlice("redirect-uri")
 			if len(list) > 0 {
 				cliRedirectURIs = make([][]string, len(cliIDs))
-				for i := range cliIDs { cliRedirectURIs[i] = append([]string{}, list...) }
+				for i := range cliIDs {
+					cliRedirectURIs[i] = append([]string{}, list...)
+				}
 			}
 		}
 		if cmd.Flags().Changed("web-origin") {
 			list, _ := cmd.Flags().GetStringSlice("web-origin")
 			if len(list) > 0 {
 				cliWebOrigins = make([][]string, len(cliIDs))
-				for i := range cliIDs { cliWebOrigins[i] = append([]string{}, list...) }
+				for i := range cliIDs {
+					cliWebOrigins[i] = append([]string{}, list...)
+				}
 			}
 		}
 	}

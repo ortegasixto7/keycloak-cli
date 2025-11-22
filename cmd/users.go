@@ -100,6 +100,7 @@ var usersCreateCmd = &cobra.Command{
 
 		created := 0
 		skipped := 0
+		var lines []string
 		for _, realm := range targetRealms {
 			for i, un := range usernames {
 				// Lookup existence by username
@@ -109,7 +110,7 @@ var usersCreateCmd = &cobra.Command{
 					return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err)
 				}
 				if len(existing) > 0 {
-					fmt.Fprintf(cmd.OutOrStdout(), "User %q already exists in realm %q. Skipped.\n", un, realm)
+					lines = append(lines, fmt.Sprintf("User %q already exists in realm %q. Skipped.", un, realm))
 					skipped++
 					continue
 				}
@@ -188,11 +189,20 @@ var usersCreateCmd = &cobra.Command{
 					}
 				}
 
-				fmt.Fprintf(cmd.OutOrStdout(), "Created user %q (ID: %s) in realm %q.\n", un, userID, realm)
+				lines = append(lines, fmt.Sprintf("Created user %q (ID: %s) in realm %q.", un, userID, realm))
 				created++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Created: %d, Skipped: %d.\n", created, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Created: %d, Skipped: %d.", created, skipped))
+		realmLabel := ""
+		if usersAllRealms {
+			realmLabel = "all realms"
+		} else if len(usersRealms) == 1 {
+			realmLabel = usersRealms[0]
+		} else if len(targetRealms) == 1 {
+			realmLabel = targetRealms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -218,41 +228,64 @@ var usersUpdateCmd = &cobra.Command{
 			}
 			return nil
 		}
-		if err := validate("--email", len(updEmails)); err != nil { return err }
-		if err := validate("--first-name", len(updFirstNames)); err != nil { return err }
-		if err := validate("--last-name", len(updLastNames)); err != nil { return err }
-		if err := validate("--password", len(updPasswords)); err != nil { return err }
+		if err := validate("--email", len(updEmails)); err != nil {
+			return err
+		}
+		if err := validate("--first-name", len(updFirstNames)); err != nil {
+			return err
+		}
+		if err := validate("--last-name", len(updLastNames)); err != nil {
+			return err
+		}
+		if err := validate("--password", len(updPasswords)); err != nil {
+			return err
+		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		client, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		// Resolve target realms
 		var targetRealms []string
 		if usersAllRealms {
 			realms, err := client.GetRealms(ctx, token)
-			if err != nil { return err }
-			for _, r := range realms { if r.Realm != nil { targetRealms = append(targetRealms, *r.Realm) } }
+			if err != nil {
+				return err
+			}
+			for _, r := range realms {
+				if r.Realm != nil {
+					targetRealms = append(targetRealms, *r.Realm)
+				}
+			}
 		} else if len(usersRealms) > 0 {
 			targetRealms = append(targetRealms, usersRealms...)
 		} else {
 			r := defaultRealm
-			if r == "" { r = config.Global.Realm }
-			if r == "" { return errors.New("target realm not specified. Use --realm or set realm in config.json") }
+			if r == "" {
+				r = config.Global.Realm
+			}
+			if r == "" {
+				return errors.New("target realm not specified. Use --realm or set realm in config.json")
+			}
 			targetRealms = []string{r}
 		}
 
 		updated := 0
 		skipped := 0
+		var lines []string
 		for _, realm := range targetRealms {
 			for i, un := range usernames {
 				params := gocloak.GetUsersParams{Username: &un}
 				existing, err := client.GetUsers(ctx, token, realm, params)
-				if err != nil { return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err) }
+				if err != nil {
+					return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err)
+				}
 				if len(existing) == 0 {
 					if updIgnoreMiss {
-						fmt.Fprintf(cmd.OutOrStdout(), "User %q not found in realm %q. Skipped.\n", un, realm)
+						lines = append(lines, fmt.Sprintf("User %q not found in realm %q. Skipped.", un, realm))
 						skipped++
 						continue
 					}
@@ -261,16 +294,42 @@ var usersUpdateCmd = &cobra.Command{
 				userID := *existing[0].ID
 
 				var em, fn, ln, pw string
-				if len(updEmails) == 1 { em = updEmails[0] } else if len(updEmails) == len(usernames) { em = updEmails[i] }
-				if len(updFirstNames) == 1 { fn = updFirstNames[0] } else if len(updFirstNames) == len(usernames) { fn = updFirstNames[i] }
-				if len(updLastNames) == 1 { ln = updLastNames[0] } else if len(updLastNames) == len(usernames) { ln = updLastNames[i] }
-				if len(updPasswords) == 1 { pw = updPasswords[0] } else if len(updPasswords) == len(usernames) { pw = updPasswords[i] }
+				if len(updEmails) == 1 {
+					em = updEmails[0]
+				} else if len(updEmails) == len(usernames) {
+					em = updEmails[i]
+				}
+				if len(updFirstNames) == 1 {
+					fn = updFirstNames[0]
+				} else if len(updFirstNames) == len(usernames) {
+					fn = updFirstNames[i]
+				}
+				if len(updLastNames) == 1 {
+					ln = updLastNames[0]
+				} else if len(updLastNames) == len(usernames) {
+					ln = updLastNames[i]
+				}
+				if len(updPasswords) == 1 {
+					pw = updPasswords[0]
+				} else if len(updPasswords) == len(usernames) {
+					pw = updPasswords[i]
+				}
 
 				u := gocloak.User{ID: &userID}
-				if em != "" { u.Email = &em; ev := true; u.EmailVerified = &ev }
-				if fn != "" { u.FirstName = &fn }
-				if ln != "" { u.LastName = &ln }
-				if enabledChanged { u.Enabled = &updEnabled }
+				if em != "" {
+					u.Email = &em
+					ev := true
+					u.EmailVerified = &ev
+				}
+				if fn != "" {
+					u.FirstName = &fn
+				}
+				if ln != "" {
+					u.LastName = &ln
+				}
+				if enabledChanged {
+					u.Enabled = &updEnabled
+				}
 
 				if err := client.UpdateUser(ctx, token, realm, u); err != nil {
 					return fmt.Errorf("failed updating user %q in realm %s: %w", un, realm, err)
@@ -280,14 +339,22 @@ var usersUpdateCmd = &cobra.Command{
 						return fmt.Errorf("failed setting password for user %q in realm %s: %w", un, realm, err)
 					}
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Updated user %q (ID: %s) in realm %q.\n", un, userID, realm)
+				lines = append(lines, fmt.Sprintf("Updated user %q (ID: %s) in realm %q.", un, userID, realm))
 				updated++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Updated: %d, Skipped: %d.\n", updated, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Updated: %d, Skipped: %d.", updated, skipped))
+		realmLabel := ""
+		if usersAllRealms {
+			realmLabel = "all realms"
+		} else if len(usersRealms) == 1 {
+			realmLabel = usersRealms[0]
+		} else if len(targetRealms) == 1 {
+			realmLabel = targetRealms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
-
 }
 
 var usersDeleteCmd = &cobra.Command{
@@ -300,32 +367,47 @@ var usersDeleteCmd = &cobra.Command{
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 		defer cancel()
 		client, token, err := keycloak.Login(ctx)
-		if err != nil { return err }
+		if err != nil {
+			return err
+		}
 
 		var targetRealms []string
 		if usersAllRealms {
 			realms, err := client.GetRealms(ctx, token)
-			if err != nil { return err }
-			for _, r := range realms { if r.Realm != nil { targetRealms = append(targetRealms, *r.Realm) } }
+			if err != nil {
+				return err
+			}
+			for _, r := range realms {
+				if r.Realm != nil {
+					targetRealms = append(targetRealms, *r.Realm)
+				}
+			}
 		} else if len(usersRealms) > 0 {
 			targetRealms = append(targetRealms, usersRealms...)
 		} else {
 			r := defaultRealm
-			if r == "" { r = config.Global.Realm }
-			if r == "" { return errors.New("target realm not specified. Use --realm or set realm in config.json") }
+			if r == "" {
+				r = config.Global.Realm
+			}
+			if r == "" {
+				return errors.New("target realm not specified. Use --realm or set realm in config.json")
+			}
 			targetRealms = []string{r}
 		}
 
 		deleted := 0
 		skipped := 0
+		var lines []string
 		for _, realm := range targetRealms {
 			for _, un := range usernames {
 				params := gocloak.GetUsersParams{Username: &un}
 				existing, err := client.GetUsers(ctx, token, realm, params)
-				if err != nil { return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err) }
+				if err != nil {
+					return fmt.Errorf("failed searching user %q in realm %s: %w", un, realm, err)
+				}
 				if len(existing) == 0 {
 					if delIgnoreMiss {
-						fmt.Fprintf(cmd.OutOrStdout(), "User %q not found in realm %q. Skipped.\n", un, realm)
+						lines = append(lines, fmt.Sprintf("User %q not found in realm %q. Skipped.", un, realm))
 						skipped++
 						continue
 					}
@@ -335,11 +417,20 @@ var usersDeleteCmd = &cobra.Command{
 				if err := client.DeleteUser(ctx, token, realm, userID); err != nil {
 					return fmt.Errorf("failed deleting user %q in realm %s: %w", un, realm, err)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Deleted user %q (ID: %s) in realm %q.\n", un, userID, realm)
+				lines = append(lines, fmt.Sprintf("Deleted user %q (ID: %s) in realm %q.", un, userID, realm))
 				deleted++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Deleted: %d, Skipped: %d.\n", deleted, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Deleted: %d, Skipped: %d.", deleted, skipped))
+		realmLabel := ""
+		if usersAllRealms {
+			realmLabel = "all realms"
+		} else if len(usersRealms) == 1 {
+			realmLabel = usersRealms[0]
+		} else if len(targetRealms) == 1 {
+			realmLabel = targetRealms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }

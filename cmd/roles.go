@@ -72,6 +72,7 @@ var rolesCreateCmd = &cobra.Command{
 		}
 		created := 0
 		skipped := 0
+		var lines []string
 		for _, realm := range targetRealms {
 			for i, rn := range roleNames {
 				exists := false
@@ -84,7 +85,7 @@ var rolesCreateCmd = &cobra.Command{
 					}
 				}
 				if exists {
-					fmt.Fprintf(cmd.OutOrStdout(), "Role %q already exists in realm %q. Skipped.\n", rn, realm)
+					lines = append(lines, fmt.Sprintf("Role %q already exists in realm %q. Skipped.", rn, realm))
 					skipped++
 					continue
 				}
@@ -104,11 +105,20 @@ var rolesCreateCmd = &cobra.Command{
 				if err != nil {
 					return fmt.Errorf("failed creating role %q in realm %s: %w", rn, realm, err)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Created role %q in realm %q.\n", rn, realm)
+				lines = append(lines, fmt.Sprintf("Created role %q in realm %q.", rn, realm))
 				created++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Created: %d, Skipped: %d.\n", created, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Created: %d, Skipped: %d.", created, skipped))
+		realmLabel := ""
+		if allRealms {
+			realmLabel = "all realms"
+		} else if rolesRealm != "" {
+			realmLabel = rolesRealm
+		} else if len(targetRealms) == 1 {
+			realmLabel = targetRealms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -166,6 +176,7 @@ var rolesUpdateCmd = &cobra.Command{
 
 		updated := 0
 		skipped := 0
+		var lines []string
 		for _, realm := range targetRealms {
 			for i, rn := range roleNames {
 				role, err := client.GetRealmRole(ctx, token, realm, rn)
@@ -173,7 +184,7 @@ var rolesUpdateCmd = &cobra.Command{
 					// 404 handling
 					if strings.Contains(strings.ToLower(err.Error()), "404") {
 						if ignoreMissing {
-							fmt.Fprintf(cmd.OutOrStdout(), "Role %q not found in realm %q. Skipped.\n", rn, realm)
+							lines = append(lines, fmt.Sprintf("Role %q not found in realm %q. Skipped.", rn, realm))
 							skipped++
 							continue
 						}
@@ -199,11 +210,20 @@ var rolesUpdateCmd = &cobra.Command{
 				if role.Name != nil {
 					finalName = *role.Name
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Updated role %q in realm %q. New name: %q.\n", rn, realm, finalName)
+				lines = append(lines, fmt.Sprintf("Updated role %q in realm %q. New name: %q.", rn, realm, finalName))
 				updated++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Updated: %d, Skipped: %d.\n", updated, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Updated: %d, Skipped: %d.", updated, skipped))
+		realmLabel := ""
+		if allRealms {
+			realmLabel = "all realms"
+		} else if rolesRealm != "" {
+			realmLabel = rolesRealm
+		} else if len(targetRealms) == 1 {
+			realmLabel = targetRealms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
@@ -249,12 +269,13 @@ var rolesDeleteCmd = &cobra.Command{
 
 		deleted := 0
 		skipped := 0
+		var lines []string
 		for _, realm := range targetRealms {
 			for _, rn := range roleNames {
 				if err := client.DeleteRealmRole(ctx, token, realm, rn); err != nil {
 					if strings.Contains(strings.ToLower(err.Error()), "404") {
 						if ignoreMissingDel {
-							fmt.Fprintf(cmd.OutOrStdout(), "Role %q not found in realm %q. Skipped.\n", rn, realm)
+							lines = append(lines, fmt.Sprintf("Role %q not found in realm %q. Skipped.", rn, realm))
 							skipped++
 							continue
 						}
@@ -262,11 +283,20 @@ var rolesDeleteCmd = &cobra.Command{
 					}
 					return fmt.Errorf("failed deleting role %q in realm %s: %w", rn, realm, err)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "Deleted role %q in realm %q.\n", rn, realm)
+				lines = append(lines, fmt.Sprintf("Deleted role %q in realm %q.", rn, realm))
 				deleted++
 			}
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "Done. Deleted: %d, Skipped: %d.\n", deleted, skipped)
+		lines = append(lines, fmt.Sprintf("Done. Deleted: %d, Skipped: %d.", deleted, skipped))
+		realmLabel := ""
+		if allRealms {
+			realmLabel = "all realms"
+		} else if rolesRealm != "" {
+			realmLabel = rolesRealm
+		} else if len(targetRealms) == 1 {
+			realmLabel = targetRealms[0]
+		}
+		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
 }
