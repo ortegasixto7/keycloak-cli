@@ -20,6 +20,7 @@ var (
 	defaultRealm string
 	logFile      string
 	jiraTicket   string
+	auditDetails string
 )
 
 var rootCmd = &cobra.Command{
@@ -151,8 +152,10 @@ func appendAudit(cmd *cobra.Command, status string, start, end time.Time, dur ti
 		ChangeKind:   changeKind,
 		TargetRealms: targetRealms,
 		Duration:     dur.String(),
+		Details:      auditDetails,
 	}
 	_ = audit.Append(entry)
+	auditDetails = ""
 }
 
 func resolveActor() (string, string) {

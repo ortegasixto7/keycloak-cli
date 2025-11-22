@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
+	"unicode"
 
 	"kc/internal/config"
 	"kc/internal/keycloak"
@@ -101,6 +104,7 @@ var usersCreateCmd = &cobra.Command{
 		created := 0
 		skipped := 0
 		var lines []string
+		var passwordPairs []string
 		for _, realm := range targetRealms {
 			for i, un := range usernames {
 				// Lookup existence by username
@@ -137,6 +141,21 @@ var usersCreateCmd = &cobra.Command{
 					pw = passwords[i]
 				}
 
+				// If no password provided, generate one automatically
+				if pw == "" {
+					generated, err := generateStrongPassword(32)
+					if err != nil {
+						return fmt.Errorf("failed generating password for user %q in realm %s: %w", un, realm, err)
+					}
+					pw = generated
+					lines = append(lines, fmt.Sprintf("Generated password for user %q in realm %q.", un, realm))
+				}
+
+				// Validate password strength (provided or generated)
+				if err := validatePasswordStrength(pw); err != nil {
+					return fmt.Errorf("invalid password for user %q in realm %s: %w", un, realm, err)
+				}
+
 				enabled := usersEnabled
 				emailVerified := em != ""
 
@@ -154,14 +173,12 @@ var usersCreateCmd = &cobra.Command{
 				if ln != "" {
 					user.LastName = &ln
 				}
-				if pw != "" {
-					creds := []gocloak.CredentialRepresentation{{
-						Type:      gocloak.StringP("password"),
-						Value:     gocloak.StringP(pw),
-						Temporary: gocloak.BoolP(false),
-					}}
-					user.Credentials = &creds
-				}
+				creds := []gocloak.CredentialRepresentation{{
+					Type:      gocloak.StringP("password"),
+					Value:     gocloak.StringP(pw),
+					Temporary: gocloak.BoolP(false),
+				}}
+				user.Credentials = &creds
 
 				userID, err := client.CreateUser(ctx, token, realm, user)
 				if err != nil {
@@ -190,6 +207,8 @@ var usersCreateCmd = &cobra.Command{
 				}
 
 				lines = append(lines, fmt.Sprintf("Created user %q (ID: %s) in realm %q.", un, userID, realm))
+				lines = append(lines, fmt.Sprintf("Password for user %q in realm %q: %s", un, realm, pw))
+				passwordPairs = append(passwordPairs, fmt.Sprintf("%s=%s@%s", un, pw, realm))
 				created++
 			}
 		}
@@ -202,9 +221,66 @@ var usersCreateCmd = &cobra.Command{
 		} else if len(targetRealms) == 1 {
 			realmLabel = targetRealms[0]
 		}
+		if len(passwordPairs) > 0 {
+			auditDetails = "passwords: " + strings.Join(passwordPairs, ", ")
+		}
 		printBox(cmd, lines, realmLabel)
 		return nil
 	}),
+}
+
+func validatePasswordStrength(pw string) error {
+	if len(pw) < 32 {
+		return fmt.Errorf("password must be at least 32 characters long")
+	}
+	var hasLower, hasUpper, hasDigit bool
+	for _, r := range pw {
+		switch {
+		case unicode.IsLower(r):
+			hasLower = true
+		case unicode.IsUpper(r):
+			hasUpper = true
+		case unicode.IsDigit(r):
+			hasDigit = true
+		}
+	}
+	if !hasLower || !hasUpper || !hasDigit {
+		return errors.New("password must contain at least one lowercase letter, one uppercase letter, and one digit")
+	}
+	return nil
+}
+
+func generateStrongPassword(n int) (string, error) {
+	const lower = "abcdefghijklmnopqrstuvwxyz"
+	const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	const digits = "0123456789"
+	const all = lower + upper + digits
+
+	if n < 3 {
+		return "", errors.New("password length must be at least 3")
+	}
+
+	b := make([]byte, n)
+
+	// ensure at least one of each required type
+	pools := []string{lower, upper, digits}
+	for i, pool := range pools {
+		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(pool))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = pool[idx.Int64()]
+	}
+
+	for i := 3; i < n; i++ {
+		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(all))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = all[idx.Int64()]
+	}
+
+	return string(b), nil
 }
 
 var usersUpdateCmd = &cobra.Command{
@@ -276,6 +352,7 @@ var usersUpdateCmd = &cobra.Command{
 		updated := 0
 		skipped := 0
 		var lines []string
+		var passwordPairs []string
 		for _, realm := range targetRealms {
 			for i, un := range usernames {
 				params := gocloak.GetUsersParams{Username: &un}
@@ -315,6 +392,12 @@ var usersUpdateCmd = &cobra.Command{
 					pw = updPasswords[i]
 				}
 
+				if pw != "" {
+					if err := validatePasswordStrength(pw); err != nil {
+						return fmt.Errorf("invalid password for user %q in realm %s: %w", un, realm, err)
+					}
+				}
+
 				u := gocloak.User{ID: &userID}
 				if em != "" {
 					u.Email = &em
@@ -338,12 +421,18 @@ var usersUpdateCmd = &cobra.Command{
 					if err := client.SetPassword(ctx, token, userID, realm, pw, false); err != nil {
 						return fmt.Errorf("failed setting password for user %q in realm %s: %w", un, realm, err)
 					}
+					lines = append(lines, fmt.Sprintf("Updated password for user %q in realm %q.", un, realm))
+					lines = append(lines, fmt.Sprintf("New password for user %q in realm %q: %s", un, realm, pw))
+					passwordPairs = append(passwordPairs, fmt.Sprintf("%s=%s@%s", un, pw, realm))
 				}
 				lines = append(lines, fmt.Sprintf("Updated user %q (ID: %s) in realm %q.", un, userID, realm))
 				updated++
 			}
 		}
 		lines = append(lines, fmt.Sprintf("Done. Updated: %d, Skipped: %d.", updated, skipped))
+		if len(passwordPairs) > 0 {
+			auditDetails = "passwords: " + strings.Join(passwordPairs, ", ")
+		}
 		realmLabel := ""
 		if usersAllRealms {
 			realmLabel = "all realms"

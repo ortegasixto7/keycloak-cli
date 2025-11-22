@@ -19,6 +19,7 @@ type Entry struct {
 	ChangeKind   string
 	TargetRealms string
 	Duration     string
+	Details      string
 }
 
 var (
@@ -60,6 +61,7 @@ func Append(e Entry) error {
 			"change_kind",
 			"target_realms",
 			"duration",
+			"details",
 		}
 		if err := w.Write(header); err != nil {
 			return err
@@ -78,6 +80,7 @@ func Append(e Entry) error {
 		e.ChangeKind,
 		e.TargetRealms,
 		e.Duration,
+		e.Details,
 	}
 
 	if err := w.Write(record); err != nil {
