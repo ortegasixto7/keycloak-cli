@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"kc/internal/audit"
 	"kc/internal/config"
 	"kc/internal/ui"
 
@@ -52,6 +53,7 @@ var rootCmd = &cobra.Command{
 			end := time.Now()
 			dur := end.Sub(start)
 			fmt.Fprintf(cmd.ErrOrStderr(), "[%s] END: status=ok dur=%s\n\n", end.Format(time.RFC3339), dur)
+			appendAudit(cmd, "ok", start, end, dur)
 		}
 		if logDest != nil {
 			_ = logDest.Close()
@@ -114,6 +116,7 @@ func withErrorEnd(run func(cmd *cobra.Command, args []string) error) func(*cobra
 			dur := end.Sub(start)
 			fmt.Fprintf(cmd.ErrOrStderr(), "[%s] ERROR: %v\n", end.Format(time.RFC3339), err)
 			fmt.Fprintf(cmd.ErrOrStderr(), "[%s] END: status=error dur=%s\n\n", end.Format(time.RFC3339), dur)
+			appendAudit(cmd, "error", start, end, dur)
 			ctx := context.WithValue(cmd.Context(), ctxKeyEnded{}, true)
 			cmd.SetContext(ctx)
 		}
@@ -129,4 +132,82 @@ func printBox(cmd *cobra.Command, lines []string, realmLabel string) {
 	}
 	box := ui.RenderBox(lines, opts)
 	fmt.Fprintln(cmd.OutOrStdout(), box)
+}
+
+func appendAudit(cmd *cobra.Command, status string, start, end time.Time, dur time.Duration) {
+	raw := buildRawCommand()
+	actorType, actorID := resolveActor()
+	targetRealms := resolveTargetRealms()
+	changeKind := resolveChangeKind(cmd.CommandPath())
+	entry := audit.Entry{
+		Timestamp:    end,
+		Status:       status,
+		CommandPath:  cmd.CommandPath(),
+		RawCommand:   raw,
+		Jira:         jiraTicket,
+		ActorType:    actorType,
+		ActorID:      actorID,
+		AuthRealm:    config.Global.AuthRealm,
+		ChangeKind:   changeKind,
+		TargetRealms: targetRealms,
+		Duration:     dur.String(),
+	}
+	_ = audit.Append(entry)
+}
+
+func resolveActor() (string, string) {
+	if config.Global.GrantType == "password" && config.Global.Username != "" {
+		return "user", config.Global.Username
+	}
+	if config.Global.ClientID != "" {
+		return "client", config.Global.ClientID
+	}
+	return "unknown", ""
+}
+
+func resolveTargetRealms() string {
+	if defaultRealm != "" {
+		return defaultRealm
+	}
+	if config.Global.Realm != "" {
+		return config.Global.Realm
+	}
+	return ""
+}
+
+func resolveChangeKind(path string) string {
+	switch path {
+	case "kc users create":
+		return "users_create"
+	case "kc users update":
+		return "users_update"
+	case "kc users delete":
+		return "users_delete"
+	case "kc clients create":
+		return "clients_create"
+	case "kc clients update":
+		return "clients_update"
+	case "kc clients delete":
+		return "clients_delete"
+	case "kc clients list":
+		return "clients_list"
+	case "kc client-scopes create":
+		return "client_scopes_create"
+	case "kc client-scopes update":
+		return "client_scopes_update"
+	case "kc client-scopes delete":
+		return "client_scopes_delete"
+	case "kc client-scopes list":
+		return "client_scopes_list"
+	case "kc roles create":
+		return "roles_create"
+	case "kc roles update":
+		return "roles_update"
+	case "kc roles delete":
+		return "roles_delete"
+	case "kc realms list":
+		return "realms_list"
+	default:
+		return path
+	}
 }
