@@ -143,9 +143,9 @@ var usersCreateCmd = &cobra.Command{
 					pw = passwords[i]
 				}
 
-				// If no password provided, generate one automatically
+				// If no password provided, generate one automatically (fixed length 12)
 				if pw == "" {
-					generated, err := generateStrongPassword(32)
+					generated, err := generateStrongPassword(12)
 					if err != nil {
 						return fmt.Errorf("failed generating password for user %q in realm %s: %w", un, realm, err)
 					}
@@ -254,10 +254,11 @@ var usersCreateCmd = &cobra.Command{
 }
 
 func validatePasswordStrength(pw string) error {
-	if len(pw) < 32 {
-		return fmt.Errorf("password must be at least 32 characters long")
+	// User-provided (or generated) passwords must be at least 6 characters long
+	if len(pw) < 6 {
+		return fmt.Errorf("password must be at least 6 characters long")
 	}
-	var hasLower, hasUpper, hasDigit bool
+	var hasLower, hasUpper, hasDigit, hasSpecial bool
 	for _, r := range pw {
 		switch {
 		case unicode.IsLower(r):
@@ -266,10 +267,13 @@ func validatePasswordStrength(pw string) error {
 			hasUpper = true
 		case unicode.IsDigit(r):
 			hasDigit = true
+		default:
+			// Anything that is not a letter or digit is considered special
+			hasSpecial = true
 		}
 	}
-	if !hasLower || !hasUpper || !hasDigit {
-		return errors.New("password must contain at least one lowercase letter, one uppercase letter, and one digit")
+	if !hasLower || !hasUpper || !hasDigit || !hasSpecial {
+		return errors.New("password must contain at least one lowercase letter, one uppercase letter, one digit, and one special character")
 	}
 	return nil
 }
@@ -278,16 +282,18 @@ func generateStrongPassword(n int) (string, error) {
 	const lower = "abcdefghijklmnopqrstuvwxyz"
 	const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	const digits = "0123456789"
-	const all = lower + upper + digits
+	const specials = "!@#$%^&*()-_=+[]{}|;:,.<>/?"
+	const all = lower + upper + digits + specials
 
-	if n < 3 {
-		return "", errors.New("password length must be at least 3")
+	// We need at least one of each type: lower, upper, digit, special
+	if n < 4 {
+		return "", errors.New("password length must be at least 4")
 	}
 
 	b := make([]byte, n)
 
 	// ensure at least one of each required type
-	pools := []string{lower, upper, digits}
+	pools := []string{lower, upper, digits, specials}
 	for i, pool := range pools {
 		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(pool))))
 		if err != nil {
@@ -296,7 +302,7 @@ func generateStrongPassword(n int) (string, error) {
 		b[i] = pool[idx.Int64()]
 	}
 
-	for i := 3; i < n; i++ {
+	for i := len(pools); i < n; i++ {
 		idx, err := rand.Int(rand.Reader, big.NewInt(int64(len(all))))
 		if err != nil {
 			return "", err
