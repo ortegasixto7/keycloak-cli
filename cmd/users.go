@@ -18,15 +18,17 @@ import (
 )
 
 var (
-	usernames      []string
-	emails         []string
-	firstNames     []string
-	lastNames      []string
-	passwords      []string
-	usersEnabled   bool
-	usersRealms    []string
-	usersAllRealms bool
-	realmRoleNames []string
+	usernames          []string
+	emails             []string
+	firstNames         []string
+	lastNames          []string
+	passwords          []string
+	usersEnabled       bool
+	usersRealms        []string
+	usersAllRealms     bool
+	realmRoleNames     []string
+	clientRoleNames    []string
+	clientRoleClientID string
 	// update-specific
 	updEmails     []string
 	updFirstNames []string
@@ -203,6 +205,28 @@ var usersCreateCmd = &cobra.Command{
 					}
 					if err := client.AddRealmRoleToUser(ctx, token, realm, userID, roles); err != nil {
 						return fmt.Errorf("failed assigning roles to user %q in realm %s: %w", un, realm, err)
+					}
+				}
+				// Assign client roles if requested
+				if len(clientRoleNames) > 0 {
+					if clientRoleClientID == "" {
+						return errors.New("missing --client-id when using --client-role")
+					}
+					kcClient, err := getClientByClientID(ctx, client, token, realm, clientRoleClientID)
+					if err != nil || kcClient == nil || kcClient.ID == nil {
+						return fmt.Errorf("client %q not found in realm %s", clientRoleClientID, realm)
+					}
+					idOfClient := *kcClient.ID
+					var roles []gocloak.Role
+					for _, rn := range clientRoleNames {
+						role, err := client.GetClientRole(ctx, token, realm, idOfClient, rn)
+						if err != nil {
+							return fmt.Errorf("failed fetching client role %q for client %s in realm %s: %w", rn, clientRoleClientID, realm, err)
+						}
+						roles = append(roles, *role)
+					}
+					if err := client.AddClientRoleToUser(ctx, token, realm, idOfClient, userID, roles); err != nil {
+						return fmt.Errorf("failed assigning client roles to user %q in realm %s: %w", un, realm, err)
 					}
 				}
 
@@ -536,6 +560,8 @@ func init() {
 	usersCreateCmd.Flags().StringSliceVar(&usersRealms, "realm", nil, "target realm(s). If omitted, uses default or config.json")
 	usersCreateCmd.Flags().BoolVar(&usersAllRealms, "all-realms", false, "create users in all realms")
 	usersCreateCmd.Flags().StringSliceVar(&realmRoleNames, "realm-role", nil, "realm role name(s) to assign to each created user")
+	usersCreateCmd.Flags().StringSliceVar(&clientRoleNames, "client-role", nil, "client role name(s) to assign to each created user")
+	usersCreateCmd.Flags().StringVar(&clientRoleClientID, "client-id", "", "client-id whose roles will be assigned to created users")
 
 	usersCmd.AddCommand(usersUpdateCmd)
 	usersUpdateCmd.Flags().StringSliceVar(&usernames, "username", nil, "username(s) to update. Repeatable; required.")

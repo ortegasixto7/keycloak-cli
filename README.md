@@ -148,6 +148,49 @@ Flags for `roles delete`:
 - `--all-realms` Delete in all realms.
 - `--ignore-missing` Skip non-existent roles instead of failing.
 
+### Client Roles
+- **Create a client role in a specific client and realm**
+  ```bash
+  ./kc.exe client-roles create `
+    --client-id my-app `
+    --name app-admin `
+    --description "Admin role for my-app" `
+    --realm myrealm `
+    --jira <TICKET>
+  ```
+
+- **Create multiple client roles with a single description (applied to all)**
+  ```bash
+  ./kc.exe client-roles create `
+    --client-id my-app `
+    --realm myrealm `
+    --name app-admin `
+    --name app-user `
+    --description "Application roles" `
+    --jira <TICKET>
+  ```
+
+- **Create multiple client roles in all realms**
+  ```bash
+  ./kc.exe client-roles create `
+    --client-id my-app `
+    --all-realms `
+    --name app-admin `
+    --name app-user `
+    --description "Global app roles" `
+    --jira <TICKET>
+  ```
+
+#### Flags specific to `client-roles create`
+- `--client-id <CLIENT_ID>` Target client-id. Required.
+- `--name <ROLE>` Repeatable. You must provide at least one `--name` (required).
+- `--description <TEXT>` Repeatable. Optional. Rules (same pattern as `roles create`):
+  - No `--description` → roles are created without a description.
+  - A single `--description` → applied to all `--name`.
+  - Multiple `--description` → must be exactly one per `--name`, in the same order.
+- `--all-realms` Create the client role(s) in all realms.
+- `--realm <REALM>` Target realm (takes precedence over the global one).
+
 ### Users
 - **Create multiple users in a realm with a single password**
   ```bash
@@ -198,6 +241,8 @@ Flags for `roles delete`:
 - `--realm <REALM>` Repeatable. Target realms. If omitted and you don't use `--all-realms`, the default realm is used (global flag or `config.json`).
 - `--all-realms` Create in all realms.
 - `--realm-role <ROLE>` Repeatable. Assign existing realm roles to the created user.
+ - `--client-role <ROLE>` Repeatable. Assign existing client roles (from the client given by `--client-id`) to the created user.
+ - `--client-id <CLIENT_ID>` Client whose roles will be assigned when using `--client-role`. Required if `--client-role` is provided.
 
 #### Edit users: `users update`
 - **Update password and enable multiple users**
