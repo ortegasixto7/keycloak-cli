@@ -63,22 +63,22 @@ Run the `./kc.exe` binary to see the general help.
 
  - **Create multiple roles with a single description (applied to all)**
    ```bash
-   ./kc.exe roles create \
-     --realm myrealm \
-     --name admin \
-     --name operator \
-     --name auditor \
-     --description "Base system roles" \
+   ./kc.exe roles create `
+     --realm myrealm `
+     --name admin `
+     --name operator `
+     --name auditor `
+     --description "Base system roles" `
      --jira <TICKET>
    ```
 
  - **Create multiple roles with per-role descriptions (ordered)**
    ```bash
-   ./kc.exe roles create \
-     --realm myrealm \
-     --name admin --description "Full access" \
-     --name operator --description "Limited operations" \
-     --name auditor --description "Read-only" \
+   ./kc.exe roles create `
+     --realm myrealm `
+     --name admin --description "Full access" `
+     --name operator --description "Limited operations" `
+     --name auditor --description "Read-only" `
      --jira <TICKET>
    ```
 
@@ -110,18 +110,18 @@ Priority order when you run `roles create` (from highest to lowest):
 #### Edit roles: `roles update`
 - **Update the description of multiple roles in a realm**
   ```bash
-  ./kc.exe roles update --realm myrealm \
-    --name admin --name operator \
-    --description "New description" \
+  ./kc.exe roles update --realm myrealm `
+    --name admin --name operator `
+    --description "New description" `
     --jira <TICKET>
   ```
 
 - **Rename roles by order in multiple realms**
   ```bash
-  ./kc.exe roles update \
-    --realm myrealm --realm sandbox \
-    --name viewer --new-name read_only \
-    --name auditor --new-name audit_read \
+  ./kc.exe roles update `
+    --realm myrealm --realm sandbox `
+    --name viewer --new-name read_only `
+    --name auditor --new-name audit_read `
     --jira <TICKET>
   ```
 
@@ -136,9 +136,9 @@ Flags for `roles update`:
 #### Delete roles: `roles delete`
 - **Delete roles in all realms (skipping non-existent ones)**
   ```bash
-  ./kc.exe roles delete --all-realms \
-    --name temp_role --name deprecated_role \
-    --ignore-missing \
+  ./kc.exe roles delete --all-realms `
+    --name temp_role --name deprecated_role `
+    --ignore-missing `
     --jira <TICKET>
   ```
 
@@ -151,40 +151,40 @@ Flags for `roles delete`:
 ### Users
 - **Create multiple users in a realm with a single password**
   ```bash
-  ./kc.exe users create \
-    --realm myrealm \
-    --username jdoe --username mjane \
-    --password "Str0ng!" \
-    --first-name John --first-name Mary \
-    --last-name Doe --last-name Jane \
-    --email john@acme.com --email mary@acme.com \
+  ./kc.exe users create `
+    --realm myrealm `
+    --username jdoe --username mjane `
+    --password "Str0ng!" `
+    --first-name John --first-name Mary `
+    --last-name Doe --last-name Jane `
+    --email john@acme.com --email mary@acme.com `
     --jira <TICKET>
   ```
 
 - **Create users with per-user passwords and realm roles**
   ```bash
-  ./kc.exe users create \
-    --realm myrealm \
-    --username a --password "Aa!1" --email a@acme.com \
-    --username b --password "Bb!2" --email b@acme.com \
-    --realm-role viewer --realm-role auditor \
+  ./kc.exe users create `
+    --realm myrealm `
+    --username a --password "Aa!1" --email a@acme.com `
+    --username b --password "Bb!2" --email b@acme.com `
+    --realm-role viewer --realm-role auditor `
     --jira <TICKET>
   ```
 
 - **Create users in all realms, without email (emailVerified=false)**
   ```bash
-  ./kc.exe users create \
-    --all-realms \
-    --username svc-1 --username svc-2 \
-    --enabled=false \
+  ./kc.exe users create `
+    --all-realms `
+    --username svc-1 --username svc-2 `
+    --enabled=false `
     --jira <TICKET>
   ```
 
 - **Create users in multiple specific realms**
   ```bash
-  ./kc.exe users create \
-    --realm myrealm --realm sandbox \
-    --username test1 --password "Test!123" \
+  ./kc.exe users create `
+    --realm myrealm --realm sandbox `
+    --username test1 --password "Test!123" `
     --jira <TICKET>
   ```
 
@@ -202,20 +202,20 @@ Flags for `roles delete`:
 #### Edit users: `users update`
 - **Update password and enable multiple users**
   ```bash
-  ./kc.exe users update \
-    --realm myrealm \
-    --username jdoe --username mjane \
-    --password "N3wP@ss!" \
-    --enabled=true \
+  ./kc.exe users update `
+    --realm myrealm `
+    --username jdoe --username mjane `
+    --password "N3wP@ss!" `
+    --enabled=true `
     --jira <TICKET>
   ```
 
 - **Update fields per user (ordered)**
   ```bash
-  ./kc.exe users update \
-    --realm myrealm \
-    --username a --email a@acme.com --first-name Ann --last-name A \
-    --username b --email b@acme.com --first-name Ben --last-name B \
+  ./kc.exe users update `
+    --realm myrealm `
+    --username a --email a@acme.com --first-name Ann --last-name A `
+    --username b --email b@acme.com --first-name Ben --last-name B `
     --jira <TICKET>
   ```
 
@@ -233,10 +233,10 @@ Flags for `users update`:
 #### Delete users: `users delete`
 - **Delete users in multiple realms, ignoring non-existent ones**
   ```bash
-  ./kc.exe users delete \
-    --realm myrealm --realm sandbox \
-    --username olduser1 --username olduser2 \
-    --ignore-missing \
+  ./kc.exe users delete `
+    --realm myrealm --realm sandbox `
+    --username olduser1 --username olduser2 `
+    --ignore-missing `
     --jira <TICKET>
   ```
 
@@ -249,24 +249,24 @@ Flags for `users delete`:
 ### Clients
 - **Create client(s)**
   ```bash
-  ./kc.exe clients create \
-    --realm myrealm \
-    --client-id app-frontend \
-    --name "App Frontend" \
-    --public=true \
-    --redirect-uri https://app.example.com/callback \
-    --web-origin https://app.example.com \
+  ./kc.exe clients create `
+    --realm myrealm `
+    --client-id app-frontend `
+    --name "App Frontend" `
+    --public=true `
+    --redirect-uri https://app.example.com/callback `
+    --web-origin https://app.example.com `
     --jira <TICKET>
   ```
 
 - **Update client(s)**
   ```bash
-  ./kc.exe clients update \
-    --realm myrealm \
-    --client-id app-frontend \
-    --name "App Frontend v2" \
-    --root-url https://app.example.com \
-    --base-url / \
+  ./kc.exe clients update `
+    --realm myrealm `
+    --client-id app-frontend `
+    --name "App Frontend v2" `
+    --root-url https://app.example.com `
+    --base-url / `
     --jira <TICKET>
   ```
 
@@ -295,21 +295,21 @@ Nota:
 #### Asignar scopes a un client
 - **Asignar scopes**
   ```bash
-  ./kc.exe clients scopes assign \
-    --realm myrealm \
-    --client-id app-frontend \
-    --type default \
-    --scope profile --scope email \
+  ./kc.exe clients scopes assign `
+    --realm myrealm `
+    --client-id app-frontend `
+    --type default `
+    --scope profile --scope email `
     --jira <TICKET>
   ```
 
 - **Remover scopes**
   ```bash
-  ./kc.exe clients scopes remove \
-    --realm myrealm \
-    --client-id app-frontend \
-    --type optional \
-    --scope address --ignore-missing \
+  ./kc.exe clients scopes remove `
+    --realm myrealm `
+    --client-id app-frontend `
+    --type optional `
+    --scope address --ignore-missing `
     --jira <TICKET>
   ```
 
@@ -323,17 +323,17 @@ Flags:
 ### Client Scopes
 - **Crear client scopes**
   ```bash
-  ./kc.exe client-scopes create \
-    --realm myrealm \
-    --name profile --description "Standard profile" --protocol openid-connect \
+  ./kc.exe client-scopes create `
+    --realm myrealm `
+    --name profile --description "Standard profile" --protocol openid-connect `
     --jira <TICKET>
   ```
 
 - **Actualizar client scopes**
   ```bash
-  ./kc.exe client-scopes update \
-    --realm myrealm \
-    --name profile --new-name profile_v2 --description "Updated" \
+  ./kc.exe client-scopes update `
+    --realm myrealm `
+    --name profile --new-name profile_v2 --description "Updated" `
     --jira <TICKET>
   ```
 
