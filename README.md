@@ -197,7 +197,7 @@ Flags for `roles delete`:
   ./kc.exe users create `
     --realm myrealm `
     --username jdoe --username mjane `
-    --password "Str0ng!" `
+    --password Str0ng! `
     --first-name John --first-name Mary `
     --last-name Doe --last-name Jane `
     --email john@acme.com --email mary@acme.com `
@@ -208,8 +208,8 @@ Flags for `roles delete`:
   ```bash
   ./kc.exe users create `
     --realm myrealm `
-    --username a --password "Aa!1" --email a@acme.com `
-    --username b --password "Bb!2" --email b@acme.com `
+    --username a --password Aa!1 --email a@acme.com `
+    --username b --password Bb!2 --email b@acme.com `
     --realm-role viewer --realm-role auditor `
     --jira <TICKET>
   ```
@@ -227,7 +227,7 @@ Flags for `roles delete`:
   ```bash
   ./kc.exe users create `
     --realm myrealm --realm sandbox `
-    --username test1 --password "Test!123" `
+    --username test1 --password Test!123 `
     --jira <TICKET>
   ```
 
@@ -250,7 +250,7 @@ Flags for `roles delete`:
   ./kc.exe users update `
     --realm myrealm `
     --username jdoe --username mjane `
-    --password "N3wP@ss!" `
+    --password N3wP@ss! `
     --enabled=true `
     --jira <TICKET>
   ```

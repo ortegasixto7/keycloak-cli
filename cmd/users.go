@@ -232,7 +232,7 @@ var usersCreateCmd = &cobra.Command{
 
 				lines = append(lines, fmt.Sprintf("Created user %q (ID: %s) in realm %q.", un, userID, realm))
 				lines = append(lines, fmt.Sprintf("Password for user %q in realm %q: %s", un, realm, pw))
-				passwordPairs = append(passwordPairs, fmt.Sprintf("%s=%s@%s", un, pw, realm))
+				passwordPairs = append(passwordPairs, pw)
 				created++
 			}
 		}
@@ -453,7 +453,7 @@ var usersUpdateCmd = &cobra.Command{
 					}
 					lines = append(lines, fmt.Sprintf("Updated password for user %q in realm %q.", un, realm))
 					lines = append(lines, fmt.Sprintf("New password for user %q in realm %q: %s", un, realm, pw))
-					passwordPairs = append(passwordPairs, fmt.Sprintf("%s=%s@%s", un, pw, realm))
+					passwordPairs = append(passwordPairs, pw)
 				}
 				lines = append(lines, fmt.Sprintf("Updated user %q (ID: %s) in realm %q.", un, userID, realm))
 				updated++
