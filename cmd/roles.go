@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ var (
 	newRoleNames     []string
 	ignoreMissing    bool
 	ignoreMissingDel bool
+	interactive      bool
 )
 
 var rolesCmd = &cobra.Command{
@@ -33,6 +35,11 @@ var rolesCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a role in a realm or in all realms",
 	RunE: withErrorEnd(func(cmd *cobra.Command, args []string) error {
+		if interactive {
+			if err := fillRolesCreateInteractive(cmd); err != nil {
+				return err
+			}
+		}
 		if len(roleNames) == 0 {
 			return errors.New("missing --name: provide at least one --name")
 		}
@@ -308,6 +315,7 @@ func init() {
 	rolesCreateCmd.Flags().StringSliceVar(&roleDescriptions, "description", nil, "role description(s). Pass none, one (applies to all), or one per --name in order.")
 	rolesCreateCmd.Flags().BoolVar(&allRealms, "all-realms", false, "create role in all realms")
 	rolesCreateCmd.Flags().StringVar(&rolesRealm, "realm", "", "target realm")
+	rolesCreateCmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "prompt for role parameters interactively")
 
 	rolesCmd.AddCommand(rolesUpdateCmd)
 	rolesUpdateCmd.Flags().StringSliceVar(&roleNames, "name", nil, "role name(s) to update. Repeatable; required.")
@@ -322,4 +330,67 @@ func init() {
 	rolesDeleteCmd.Flags().BoolVar(&allRealms, "all-realms", false, "delete role(s) in all realms")
 	rolesDeleteCmd.Flags().StringVar(&rolesRealm, "realm", "", "target realm")
 	rolesDeleteCmd.Flags().BoolVar(&ignoreMissingDel, "ignore-missing", false, "skip roles not found instead of failing")
+}
+
+func fillRolesCreateInteractive(cmd *cobra.Command) error {
+	reader := bufio.NewReader(cmd.InOrStdin())
+
+	if jiraTicket == "" {
+		fmt.Fprint(cmd.OutOrStdout(), "Jira ticket (optional, leave empty to skip): ")
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		jiraTicket = strings.TrimSpace(line)
+	}
+
+	if !allRealms && rolesRealm == "" {
+		fmt.Fprint(cmd.OutOrStdout(), "Create role in all realms? [y/N]: ")
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		answer := strings.ToLower(strings.TrimSpace(line))
+		if answer == "y" || answer == "yes" {
+			allRealms = true
+		}
+	}
+
+	if !allRealms && rolesRealm == "" {
+		fmt.Fprint(cmd.OutOrStdout(), "Target realm (leave empty to use default/config): ")
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		rolesRealm = strings.TrimSpace(line)
+	}
+
+	if len(roleNames) == 0 {
+		fmt.Fprint(cmd.OutOrStdout(), "Role name(s) (comma-separated): ")
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		parts := strings.Split(line, ",")
+		for _, p := range parts {
+			name := strings.TrimSpace(p)
+			if name != "" {
+				roleNames = append(roleNames, name)
+			}
+		}
+	}
+
+	if len(roleDescriptions) == 0 {
+		fmt.Fprint(cmd.OutOrStdout(), "Role description (optional, applies to all names): ")
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		desc := strings.TrimSpace(line)
+		if desc != "" {
+			roleDescriptions = []string{desc}
+		}
+	}
+
+	return nil
 }

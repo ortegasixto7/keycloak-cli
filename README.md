@@ -14,17 +14,29 @@ Run the `./kc.exe` binary to see the general help.
 
 - **On Windows (PowerShell or CMD)**
   ```powershell
+  # Main CLI executable (kc.exe)
   go build -o kc.exe .
+
+  # Fixed roles-create executable (kc-roles-create-fixed.exe)
+  go build -o kc-roles-create-fixed.exe ./cmd/roles-create-fixed
   ```
 
 - **From macOS/Linux (cross-compile to Windows amd64)**
   ```bash
+  # Main CLI executable (kc.exe)
   GOOS=windows GOARCH=amd64 go build -o kc.exe .
+
+  # Fixed roles-create executable (kc-roles-create-fixed.exe)
+  GOOS=windows GOARCH=amd64 go build -o kc-roles-create-fixed.exe ./cmd/roles-create-fixed
   ```
 
 - **From macOS/Linux (cross-compile to Windows arm64)**
   ```bash
+  # Main CLI executable (kc.exe)
   GOOS=windows GOARCH=arm64 go build -o kc.exe .
+
+  # Fixed roles-create executable (kc-roles-create-fixed.exe)
+  GOOS=windows GOARCH=arm64 go build -o kc-roles-create-fixed.exe ./cmd/roles-create-fixed
   ```
 
 ### Global flags
@@ -92,6 +104,17 @@ Run the `./kc.exe` binary to see the general help.
    ./kc.exe roles create --all-realms --name viewer --name auditor --description "Global read" --jira <TICKET>
    ```
 
+- **Create roles interactively (realm, names, description prompted)**
+  ```bash
+  ./kc.exe roles create -i --jira <TICKET>
+  ```
+
+- **Create roles interactively but forcing a specific realm from CLI**
+  ```bash
+  ./kc.exe roles create -i --realm myrealm --jira <TICKET>
+  # Interactive mode will not re-ask for the realm, only for role names and description.
+  ```
+
 #### Flags specific to `roles create`
 - `--name <ROLE>` Repeatable. You must provide at least one `--name` (required).
 - `--description <TEXT>` Repeatable. Optional. Rules:
@@ -100,12 +123,29 @@ Run the `./kc.exe` binary to see the general help.
   - Multiple `--description` → must be exactly one per `--name`, in the same order.
 - `--all-realms` Create the role in all realms
 - `--realm <REALM>` Target realm (takes precedence over the global one)
+- `-i, --interactive` Prompt for role parameters interactively (realm/all-realms, names, description). Flags already provided on the command line are respected and not re-asked.
 
 #### Target realm resolution
 Priority order when you run `roles create` (from highest to lowest):
 1. `--realm` flag on the `roles create` command.
 2. Global `--realm` flag on the root command.
 3. `realm` value in `config.json`.
+
+### Fixed executable for `roles create`
+
+In addition to the main `kc.exe` binary, there is a small dedicated executable that always runs a pre-configured `roles create` command:
+
+- **Build (Windows example)**
+  ```powershell
+  go build -o kc-roles-create-fixed.exe ./cmd/roles-create-fixed
+  ```
+
+- **Usage**
+  ```bash
+  ./kc-roles-create-fixed.exe
+  ```
+
+The exact realm, role names and other arguments executed by `kc-roles-create-fixed.exe` are defined in code inside `cmd/roles-create-fixed/main.go`. To change its behavior, edit that file and rebuild the executable.
 
 #### Edit roles: `roles update`
 - **Update the description of multiple roles in a realm**
